@@ -4,13 +4,13 @@
 {-# OPTIONS_GHC -Wno-error=unused-do-bind #-}
 {-# OPTIONS_GHC -Wno-error=unused-matches #-}
 
-module Parse.Module (
-  fromByteString,
-  ProjectType (..),
-  isKernel,
-  chompImports,
-  chompImport,
-)
+module Parse.Module
+  ( fromByteString,
+    ProjectType (..),
+    isKernel,
+    chompImports,
+    chompImport,
+  )
 where
 
 import AST.Source qualified as Src
@@ -60,10 +60,10 @@ isKernel projectType =
 -- MODULE
 
 data Module = Module
-  { _header :: Maybe Header
-  , _imports :: [([Src.Comment], Src.Import)]
-  , _infixes :: ([Src.Comment], [A.Located Src.Infix])
-  , _decls :: [Decl.Decl]
+  { _header :: Maybe Header,
+    _imports :: [([Src.Comment], Src.Import)],
+    _infixes :: ([Src.Comment], [A.Located Src.Infix]),
+    _decls :: [Decl.Decl]
   }
 
 chompModule :: ProjectType -> Parser E.Module Module
@@ -134,11 +134,11 @@ categorizeDecls ::
   [(Src.SourceOrder, NonEmpty Src.Comment)] ->
   Src.SourceOrder ->
   [Decl.Decl] ->
-  ( [(Src.SourceOrder, A.Located Src.Value)]
-  , [(Src.SourceOrder, A.Located Src.Union)]
-  , [(Src.SourceOrder, A.Located Src.Alias)]
-  , [(Src.SourceOrder, Src.Port)]
-  , [(Src.SourceOrder, NonEmpty Src.Comment)]
+  ( [(Src.SourceOrder, A.Located Src.Value)],
+    [(Src.SourceOrder, A.Located Src.Union)],
+    [(Src.SourceOrder, A.Located Src.Alias)],
+    [(Src.SourceOrder, Src.Port)],
+    [(Src.SourceOrder, NonEmpty Src.Comment)]
   )
 categorizeDecls values unions aliases ports topLevelComments index decls =
   case decls of
@@ -267,8 +267,8 @@ chompHeader =
           let comments = SC.HeaderComments commentsBeforeModuleLine commentsAfterModuleKeyword commentsAfterModuleName commentsAfterExposingKeyword commentsBeforeDocComment commentsAfterDocComment
           return $
             Just $
-              Header name (NoEffects (A.Region start effectEnd)) exports docComment comments
-      , -- port module MyThing exposing (..)
+              Header name (NoEffects (A.Region start effectEnd)) exports docComment comments,
+        -- port module MyThing exposing (..)
         do
           Keyword.port_ E.PortModuleProblem
           commentsAfterPortKeyword <- Space.chompAndCheckIndent E.ModuleSpace E.PortModuleProblem
@@ -285,8 +285,8 @@ chompHeader =
           let portsComments = SC.PortsComments commentsAfterPortKeyword
           return $
             Just $
-              Header name (Ports (A.Region start effectEnd) portsComments) exports docComment comments
-      , -- effect module MyThing where { command = MyCmd } exposing (..)
+              Header name (Ports (A.Region start effectEnd) portsComments) exports docComment comments,
+        -- effect module MyThing where { command = MyCmd } exposing (..)
         do
           Keyword.effect_ E.Effect
           commentsAfterEffectKeyword <- Space.chompAndCheckIndent E.ModuleSpace E.Effect
@@ -328,8 +328,8 @@ chompManager =
                 word1 0x7D {-}-} E.Effect
                 commentsAfterCloseBrace <- spaces_em
                 let comments = SC.CmdComments commentsAfterOpenBrace commentsAfterCmd
-                return (Src.Cmd cmd comments, commentsAfterCloseBrace)
-            , do
+                return (Src.Cmd cmd comments, commentsAfterCloseBrace),
+              do
                 word1 0x2C {-,-} E.Effect
                 commentsAfterComma <- spaces_em
                 sub <- chompSubscription
@@ -340,8 +340,8 @@ chompManager =
                 let subComments = SC.SubComments commentsAfterComma commentsAfterSub
                 let comments = SC.FxComments cmdComments subComments
                 return (Src.Fx cmd sub comments, commentsAfterCloseBrace)
-            ]
-      , do
+            ],
+        do
           sub <- chompSubscription
           commentsAfterSub <- spaces_em
           oneOf
@@ -350,8 +350,8 @@ chompManager =
                 word1 0x7D {-}-} E.Effect
                 commentsAfterCloseBrace <- spaces_em
                 let comments = SC.SubComments commentsAfterOpenBrace commentsAfterSub
-                return (Src.Sub sub comments, commentsAfterCloseBrace)
-            , do
+                return (Src.Sub sub comments, commentsAfterCloseBrace),
+              do
                 word1 0x2C {-,-} E.Effect
                 commentsAfterComma <- spaces_em
                 cmd <- chompCommand
@@ -411,14 +411,14 @@ chompImport =
       [ do
           Space.checkFreshLine E.ImportEnd
           let comments = SC.ImportComments commentsAfterImportKeyword commentsAfterName
-          return $ (Src.Import name Nothing (Src.Explicit []) Nothing comments, outdentedComments)
-      , do
+          return $ (Src.Import name Nothing (Src.Explicit []) Nothing comments, outdentedComments),
+        do
           Space.checkIndent end E.ImportEnd
           let comments = SC.ImportComments commentsAfterImportKeyword (commentsAfterName ++ outdentedComments)
           oneOf
             E.ImportAs
-            [ chompAs name comments
-            , chompExposing name Nothing comments
+            [ chompAs name comments,
+              chompExposing name Nothing comments
             ]
       ]
 
@@ -436,8 +436,8 @@ chompAs name comments =
       [ do
           Space.checkFreshLine E.ImportEnd
           let aliasComments = SC.ImportAliasComments commentsAfterAs commentsAfterAliasName
-          return (Src.Import name (Just (alias, aliasComments)) (Src.Explicit []) Nothing comments, outdentedComments)
-      , do
+          return (Src.Import name (Just (alias, aliasComments)) (Src.Explicit []) Nothing comments, outdentedComments),
+        do
           Space.checkIndent end E.ImportEnd
           let aliasComments = SC.ImportAliasComments commentsAfterAs (commentsAfterAliasName <> outdentedComments)
           chompExposing name (Just (alias, aliasComments)) comments
@@ -467,8 +467,8 @@ exposing =
           word2 0x2E 0x2E {-..-} E.ExposingValue
           Space.chompAndCheckIndent E.ExposingSpace E.ExposingIndentEnd
           word1 0x29 {-)-} E.ExposingEnd
-          return Src.Open
-      , do
+          return Src.Open,
+        do
           exposed <- chompExposed
           Space.chompAndCheckIndent E.ExposingSpace E.ExposingIndentEnd
           exposingHelp [exposed]
@@ -483,8 +483,8 @@ exposingHelp revExposed =
         Space.chompAndCheckIndent E.ExposingSpace E.ExposingIndentValue
         exposed <- chompExposed
         Space.chompAndCheckIndent E.ExposingSpace E.ExposingIndentEnd
-        exposingHelp (exposed : revExposed)
-    , do
+        exposingHelp (exposed : revExposed),
+      do
         word1 0x29 {-)-} E.ExposingEnd
         return (Src.Explicit (reverse revExposed))
     ]
@@ -498,14 +498,14 @@ chompExposed =
       [ do
           name <- Var.lower E.ExposingValue
           end <- getPosition
-          return $ Src.Lower $ A.at start end name
-      , do
+          return $ Src.Lower $ A.at start end name,
+        do
           word1 0x28 {-(-} E.ExposingValue
           op <- Symbol.operator E.ExposingOperator E.ExposingOperatorReserved
           word1 0x29 {-)-} E.ExposingOperatorRightParen
           end <- getPosition
-          return $ Src.Operator (A.Region start end) op
-      , do
+          return $ Src.Operator (A.Region start end) op,
+        do
           name <- Var.upper E.ExposingValue
           end <- getPosition
           Space.chompAndCheckIndent E.ExposingSpace E.ExposingIndentEnd

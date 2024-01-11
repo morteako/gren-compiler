@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parse.Expression (
-  expression,
-)
+module Parse.Expression
+  ( expression,
+  )
 where
 
 import AST.Source qualified as Src
@@ -31,15 +31,15 @@ term =
     start <- getPosition
     oneOf
       E.Start
-      [ variable start >>= accessible start
-      , string start
-      , number start
-      , parenthesizedExpr start >>= accessible start
-      , array start
-      , record start >>= accessible start
-      , accessor start
-      , character start
-      , wildcard
+      [ variable start >>= accessible start,
+        string start,
+        number start,
+        parenthesizedExpr start >>= accessible start,
+        array start,
+        record start >>= accessible start,
+        accessor start,
+        character start,
+        wildcard
       ]
 
 string :: A.Position -> Parser E.Expr Src.Expr
@@ -78,8 +78,8 @@ parenthesizedExpr start@(A.Position row col) =
                   E.ParenthesizedOperatorClose
                   [ do
                       word1 0x29 {-)-} E.ParenthesizedOperatorClose
-                      addEnd start (Src.Op op)
-                  , do
+                      addEnd start (Src.Op op),
+                    do
                       ((expr, commentsAfter), end) <-
                         specialize E.ParenthesizedExpr $
                           do
@@ -94,8 +94,8 @@ parenthesizedExpr start@(A.Position row col) =
                   ]
               else do
                 word1 0x29 {-)-} E.ParenthesizedOperatorClose
-                addEnd start (Src.Op op)
-        , do
+                addEnd start (Src.Op op),
+          do
             ((expr, commentsAfter), _) <- specialize E.ParenthesizedExpr expression
             word1 0x29 {-)-} E.ParenthesizedEnd
             addEnd start (Src.Parens comments1 expr commentsAfter)
@@ -150,8 +150,8 @@ array start =
             trace "word2" Space.checkIndent end E.ArrayIndentEnd
             let entryComments = SC.ArrayEntryComments commentsAfterOpenBrace commentsAfterExpr
             let entry = (expr, entryComments)
-            chompArrayEnd start [entry]
-        , do
+            chompArrayEnd start [entry],
+          do
             -- TODO: comments in an empty array are dropped; what to do with these?
             trace "word1" word1 0x5D {-]-} E.ArrayOpen
             addEnd start (Src.Array [])
@@ -168,8 +168,8 @@ chompArrayEnd start entries =
         traceShow ("checkIndent", end) Space.checkIndent end E.ArrayIndentEnd
         let entryComments = SC.ArrayEntryComments commentsAfterComma commentsAfterExpr
         let entry = (expr, entryComments)
-        trace "end" chompArrayEnd start (entry : entries)
-    , do
+        trace "end" chompArrayEnd start (entry : entries),
+      do
         word1 0x5D {-]-} E.ArrayEnd
         trace "addend" addEnd start (Src.Array (reverse entries))
     ]
@@ -186,8 +186,8 @@ record start =
         [ do
             -- TODO: what to do with comments in empty record
             word1 0x7D {-}-} E.RecordEnd
-            addEnd start (Src.Record [])
-        , do
+            addEnd start (Src.Record []),
+          do
             firstTerm <- specialize E.RecordUpdateExpr term
             commentsAfterFirstTerm <- Space.chompAndCheckIndent E.RecordSpace E.RecordIndentEquals
             oneOf
@@ -198,8 +198,8 @@ record start =
                   firstField <- chompField commentsAfterBar
                   let comments = SC.UpdateComments commentsAfterOpenBrace commentsAfterFirstTerm
                   fields <- chompFields [firstField]
-                  addEnd start (Src.Update firstTerm fields comments)
-              , do
+                  addEnd start (Src.Update firstTerm fields comments),
+                do
                   word1 0x3D {-=-} E.RecordEquals
                   commentsAfterEquals <- Space.chompAndCheckIndent E.RecordSpace E.RecordIndentExpr
                   ((value, commentsAfterValue), end) <- specialize E.RecordExpr expression
@@ -224,8 +224,8 @@ chompFields fields =
         word1 0x2C {-,-} E.RecordEnd
         commentsAfterComma <- Space.chompAndCheckIndent E.RecordSpace E.RecordIndentField
         f <- chompField commentsAfterComma
-        chompFields (f : fields)
-    , do
+        chompFields (f : fields),
+      do
         word1 0x7D {-}-} E.RecordEnd
         return (reverse fields)
     ]
@@ -250,11 +250,11 @@ expression =
     start <- getPosition
     oneOf
       E.Start
-      [ let_ start
-      , if_ start
-      , case_ start
-      , function start
-      , do
+      [ let_ start,
+        if_ start,
+        case_ start,
+        function start,
+        do
           expr <- possiblyNegativeTerm start
           end <- getPosition
           commentsAfter <- Space.chomp E.Space
@@ -262,11 +262,11 @@ expression =
       ]
 
 data State = State
-  { _ops :: ![Src.BinopsSegment]
-  , _expr :: !Src.Expr
-  , _args :: ![([Src.Comment], Src.Expr)]
-  , _end :: !A.Position
-  , _commentsAfter :: [Src.Comment]
+  { _ops :: ![Src.BinopsSegment],
+    _expr :: !Src.Expr,
+    _args :: ![([Src.Comment], Src.Expr)],
+    _end :: !A.Position,
+    _commentsAfter :: [Src.Comment]
   }
 
 chompExprEnd :: A.Position -> State -> Space.Parser E.Expr (Src.Expr, [Src.Comment])
@@ -278,8 +278,8 @@ chompExprEnd start (State ops expr args end commentsBefore) =
         arg <- term
         newEnd <- getPosition
         commentsAfter <- Space.chomp E.Space
-        chompExprEnd start (State ops expr ((commentsBefore, arg) : args) newEnd commentsAfter)
-    , -- operator
+        chompExprEnd start (State ops expr ((commentsBefore, arg) : args) newEnd commentsAfter),
+      -- operator
       do
         Space.checkIndent end E.Start
         op@(A.At (A.Region opStart opEnd) opName) <- addLocation (Symbol.operator E.Start E.OperatorReserved)
@@ -304,16 +304,16 @@ chompExprEnd start (State ops expr args end commentsBefore) =
                       newEnd <- getPosition
                       commentsAfter <- Space.chomp E.Space
                       let newOps = (toCall expr args, op, opComments) : ops
-                      chompExprEnd start (State newOps newExpr [] newEnd commentsAfter)
-                  , -- final term
+                      chompExprEnd start (State newOps newExpr [] newEnd commentsAfter),
+                    -- final term
                     do
                       ((newLast, commentsAfter), newEnd) <-
                         oneOf
                           err
-                          [ let_ newStart
-                          , case_ newStart
-                          , if_ newStart
-                          , function newStart
+                          [ let_ newStart,
+                            case_ newStart,
+                            if_ newStart,
+                            function newStart
                           ]
                       let newOps = (toCall expr args, op, opComments) : ops
                       let finalExpr = Src.Binops (reverse newOps) newLast
@@ -323,15 +323,14 @@ chompExprEnd start (State ops expr args end commentsBefore) =
     -- done
     ( case ops of
         [] ->
-          ( (toCall expr args, commentsBefore)
-          , end
+          ( (toCall expr args, commentsBefore),
+            end
           )
         _ ->
-          (
-            ( A.at start end (Src.Binops (reverse ops) (toCall expr args))
-            , commentsBefore
-            )
-          , end
+          ( ( A.at start end (Src.Binops (reverse ops) (toCall expr args)),
+              commentsBefore
+            ),
+            end
           )
     )
 
@@ -342,8 +341,8 @@ possiblyNegativeTerm start =
     [ do
         word1 0x2D {---} E.Start
         expr <- term
-        addEnd start (Src.Negate expr)
-    , term
+        addEnd start (Src.Negate expr),
+      term
     ]
 
 toCall :: Src.Expr -> [([Src.Comment], Src.Expr)] -> Src.Expr
@@ -379,8 +378,8 @@ chompIfEnd start@(A.Position _ indent) branches commentsBefore =
       E.IfElseBranchStart
       [ do
           Keyword.if_ E.IfElseBranchStart
-          chompIfEnd start newBranches commentsAfterElseKeyword
-      , do
+          chompIfEnd start newBranches commentsAfterElseKeyword,
+        do
           ((elseBranch, commentsAfterExpr), elseEnd) <- specialize E.IfElseBranch expression
           let (commentsAfterElseBody, commentsAfter) = List.span (A.isIndentedMoreThan indent) commentsAfterExpr
           let ifComments = SC.IfComments commentsAfterElseKeyword commentsAfterElseBody
@@ -411,8 +410,8 @@ chompArgs revArgs commentsBefore =
     [ do
         arg <- specialize E.FuncArg Pattern.term
         commentsAfterArg <- Space.chompAndCheckIndent E.FuncSpace E.FuncIndentArrow
-        chompArgs ((commentsBefore, arg) : revArgs) commentsAfterArg
-    , do
+        chompArgs ((commentsBefore, arg) : revArgs) commentsAfterArg,
+      do
         word2 0x2D 0x3E {-->-} E.FuncArrow
         return (revArgs, commentsBefore)
     ]
@@ -434,8 +433,8 @@ case_ start =
           ((branches, commentsAfterLastBranch), end) <- chompCaseEnd [firstBranch] commentsAfterFirstBranch firstEnd
           let caseComments = SC.CaseComments commentsBeforeExpr commentsAfterExpr
           return
-            ( (A.at start end (Src.Case expr branches caseComments), commentsAfterLastBranch)
-            , end
+            ( (A.at start end (Src.Case expr branches caseComments), commentsAfterLastBranch),
+              end
             )
 
 chompBranch :: [Src.Comment] -> Space.Parser E.Case (Src.CaseBranch, [Src.Comment])
@@ -483,8 +482,8 @@ let_ start =
       ((body, commentsAfter), end) <- specialize E.LetBody expression
       let comments = SC.LetComments commentsBeforeIn commentsAfterIn
       return
-        ( (A.at start end (Src.Let defs body comments), commentsAfter)
-        , end
+        ( (A.at start end (Src.Let defs body comments), commentsAfter),
+          end
         )
 
 chompLetDefs :: [([Src.Comment], A.Located Src.Def)] -> [Src.Comment] -> A.Position -> Space.Parser E.Let ([([Src.Comment], A.Located Src.Def)], [Src.Comment])
@@ -503,8 +502,8 @@ chompLetDef :: Space.Parser E.Let (A.Located Src.Def, [Src.Comment])
 chompLetDef =
   oneOf
     E.LetDefName
-    [ definition
-    , destructure
+    [ definition,
+      destructure
     ]
 
 -- DEFINITION
@@ -526,8 +525,8 @@ definition =
               defName <- chompMatchingName name
               commentsAfterMatchingName <- Space.chompAndCheckIndent E.DefSpace E.DefIndentEquals
               let tipeComments = SC.ValueTypeComments commentsAfterName commentsAfterColon commentsAfterTipe
-              chompDefArgsAndBody start defName (Just (tipe, tipeComments)) [] commentsAfterMatchingName
-          , chompDefArgsAndBody start aname Nothing [] commentsAfterName
+              chompDefArgsAndBody start defName (Just (tipe, tipeComments)) [] commentsAfterMatchingName,
+            chompDefArgsAndBody start aname Nothing [] commentsAfterName
           ]
 
 chompDefArgsAndBody :: A.Position -> A.Located Name.Name -> Maybe (Src.Type, SC.ValueTypeComments) -> [([Src.Comment], Src.Pattern)] -> [Src.Comment] -> Space.Parser E.Def (A.Located Src.Def, [Src.Comment])
@@ -537,16 +536,16 @@ chompDefArgsAndBody start@(A.Position _ startCol) name tipe revArgs commentsBefo
     [ do
         arg <- specialize E.DefArg Pattern.term
         commentsAfterArg <- Space.chompAndCheckIndent E.DefSpace E.DefIndentEquals
-        chompDefArgsAndBody start name tipe ((commentsBefore, arg) : revArgs) commentsAfterArg
-    , do
+        chompDefArgsAndBody start name tipe ((commentsBefore, arg) : revArgs) commentsAfterArg,
+      do
         word1 0x3D {-=-} E.DefEquals
         commentsAfterEquals <- Space.chompAndCheckIndent E.DefSpace E.DefIndentBody
         ((body, commentsAfter), end) <- specialize E.DefBody expression
         let (commentsAfterBody, commentsAfterDef) = List.span (A.isIndentedMoreThan startCol) commentsAfter
         let comments = SC.ValueComments commentsBefore commentsAfterEquals commentsAfterBody
         return
-          ( (A.at start end (Src.Define name (reverse revArgs) body tipe comments), commentsAfterDef)
-          , end
+          ( (A.at start end (Src.Define name (reverse revArgs) body tipe comments), commentsAfterDef),
+            end
           )
     ]
 

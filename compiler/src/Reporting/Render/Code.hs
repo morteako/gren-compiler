@@ -1,16 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Reporting.Render.Code (
-  Source,
-  toSource,
-  toSnippet,
-  toPair,
-  Next (..),
-  whatIsNext,
-  nextLineStartsWithKeyword,
-  nextLineStartsWithCloseCurly,
-)
+module Reporting.Render.Code
+  ( Source,
+    toSource,
+    toSnippet,
+    toPair,
+    Next (..),
+    whatIsNext,
+    nextLineStartsWithKeyword,
+    nextLineStartsWithCloseCurly,
+  )
 where
 
 import Data.ByteString qualified as B
@@ -45,10 +45,10 @@ toSource source =
 toSnippet :: Source -> A.Region -> Maybe A.Region -> (D.Doc, D.Doc) -> D.Doc
 toSnippet source region highlight (preHint, postHint) =
   D.vcat
-    [ preHint
-    , ""
-    , render source region highlight
-    , postHint
+    [ preHint,
+      "",
+      render source region highlight,
+      postHint
     ]
 
 toPair :: Source -> A.Region -> A.Region -> (D.Doc, D.Doc) -> (D.Doc, D.Doc, D.Doc) -> D.Doc
@@ -56,20 +56,20 @@ toPair source r1 r2 (oneStart, oneEnd) (twoStart, twoMiddle, twoEnd) =
   case renderPair source r1 r2 of
     OneLine codeDocs ->
       D.vcat
-        [ oneStart
-        , ""
-        , codeDocs
-        , oneEnd
+        [ oneStart,
+          "",
+          codeDocs,
+          oneEnd
         ]
     TwoChunks code1 code2 ->
       D.vcat
-        [ twoStart
-        , ""
-        , code1
-        , twoMiddle
-        , ""
-        , code2
-        , twoEnd
+        [ twoStart,
+          "",
+          code1,
+          twoMiddle,
+          "",
+          code2,
+          twoEnd
         ]
 
 -- RENDER SNIPPET
@@ -150,8 +150,8 @@ renderPair source@(Source sourceLines) region1 region2 =
               line = Maybe.fromJust $ List.lookup startRow1 sourceLines
            in OneLine $
                 D.vcat
-                  [ D.fromChars lineNumber <> "| " <> D.fromChars line
-                  , D.fromChars spaces1
+                  [ D.fromChars lineNumber <> "| " <> D.fromChars line,
+                    D.fromChars spaces1
                       <> D.red (D.fromChars zigzag1)
                       <> D.fromChars spaces2
                       <> D.red (D.fromChars zigzag2)

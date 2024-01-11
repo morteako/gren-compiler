@@ -1,19 +1,19 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Reporting.Annotation (
-  Located (..),
-  Position (..),
-  Region (..),
-  traverse,
-  toValue,
-  merge,
-  at,
-  isIndentedMoreThan,
-  toRegion,
-  mergeRegions,
-  zero,
-  one,
-)
+module Reporting.Annotation
+  ( Located (..),
+    Position (..),
+    Region (..),
+    traverse,
+    toValue,
+    merge,
+    at,
+    isIndentedMoreThan,
+    toRegion,
+    mergeRegions,
+    zero,
+    one,
+  )
 where
 
 import Control.Monad (liftM2)

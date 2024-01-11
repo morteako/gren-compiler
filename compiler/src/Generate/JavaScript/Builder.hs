@@ -1,20 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Generate.JavaScript.Builder (
-  Builder (..),
-  Mapping (..),
-  emptyBuilder,
-  stmtToBuilder,
-  exprToBuilder,
-  addByteString,
-  Expr (..),
-  LValue (..),
-  Stmt (..),
-  Case (..),
-  InfixOp (..),
-  PrefixOp (..),
-)
+module Generate.JavaScript.Builder
+  ( Builder (..),
+    Mapping (..),
+    emptyBuilder,
+    stmtToBuilder,
+    exprToBuilder,
+    addByteString,
+    Expr (..),
+    LValue (..),
+    Stmt (..),
+    Case (..),
+    InfixOp (..),
+    PrefixOp (..),
+  )
 where
 
 -- Based on the language-ecmascript package.
@@ -125,37 +125,37 @@ data PrefixOp
 -- BUILDER
 
 data Builder = Builder
-  { _code :: B.Builder
-  , _currentLine :: Word32
-  , _currentCol :: Word32
-  , _mappings :: [Mapping]
+  { _code :: B.Builder,
+    _currentLine :: Word32,
+    _currentCol :: Word32,
+    _mappings :: [Mapping]
   }
 
 data Mapping = Mapping
-  { _m_src_line :: Word32
-  , _m_src_col :: Word32
-  , _m_src_module :: ModuleName.Canonical
-  , _m_src_name :: Maybe Name
-  , _m_gen_line :: Word32
-  , _m_gen_col :: Word32
+  { _m_src_line :: Word32,
+    _m_src_col :: Word32,
+    _m_src_module :: ModuleName.Canonical,
+    _m_src_name :: Maybe Name,
+    _m_gen_line :: Word32,
+    _m_gen_col :: Word32
   }
 
 emptyBuilder :: Int -> Builder
 emptyBuilder currentLine =
   Builder
-    { _code = mempty
-    , _currentLine = fromIntegral currentLine
-    , _currentCol = 1
-    , _mappings = []
+    { _code = mempty,
+      _currentLine = fromIntegral currentLine,
+      _currentCol = 1,
+      _mappings = []
     }
 
 addAscii :: String -> Builder -> Builder
 addAscii code (Builder _code _currLine _currCol _mappings) =
   Builder
-    { _code = _code <> B.string7 code
-    , _currentLine = _currLine
-    , _currentCol = _currCol + fromIntegral (length code)
-    , _mappings = _mappings
+    { _code = _code <> B.string7 code,
+      _currentLine = _currLine,
+      _currentCol = _currCol + fromIntegral (length code),
+      _mappings = _mappings
     }
 
 addByteString :: B.Builder -> Builder -> Builder
@@ -166,17 +166,17 @@ addByteString bsBuilder (Builder _code _currLine _currCol _mappings) =
    in if bsLines == 0
         then
           Builder
-            { _code = _code <> bsBuilder
-            , _currentLine = _currLine
-            , _currentCol = _currCol + fromIntegral bsSize
-            , _mappings = _mappings
+            { _code = _code <> bsBuilder,
+              _currentLine = _currLine,
+              _currentCol = _currCol + fromIntegral bsSize,
+              _mappings = _mappings
             }
         else
           Builder
-            { _code = _code <> bsBuilder
-            , _currentLine = _currLine + fromIntegral bsLines
-            , _currentCol = 1
-            , _mappings = _mappings
+            { _code = _code <> bsBuilder,
+              _currentLine = _currLine + fromIntegral bsLines,
+              _currentCol = 1,
+              _mappings = _mappings
             }
 
 addTrackedByteString :: ModuleName.Canonical -> A.Position -> B.Builder -> Builder -> Builder
@@ -186,29 +186,29 @@ addTrackedByteString moduleName (A.Position line col) bsBuilder (Builder _code _
       bsLines = BSLazy.count '\n' lazyByteString
       newMappings =
         ( Mapping
-            { _m_src_line = line
-            , _m_src_col = col
-            , _m_src_module = moduleName
-            , _m_src_name = Nothing
-            , _m_gen_line = _currLine
-            , _m_gen_col = _currCol
+            { _m_src_line = line,
+              _m_src_col = col,
+              _m_src_module = moduleName,
+              _m_src_name = Nothing,
+              _m_gen_line = _currLine,
+              _m_gen_col = _currCol
             }
         )
           : _mappings
    in if bsLines == 0
         then
           Builder
-            { _code = _code <> bsBuilder
-            , _currentLine = _currLine
-            , _currentCol = _currCol + fromIntegral bsSize
-            , _mappings = newMappings
+            { _code = _code <> bsBuilder,
+              _currentLine = _currLine,
+              _currentCol = _currCol + fromIntegral bsSize,
+              _mappings = newMappings
             }
         else
           Builder
-            { _code = _code <> bsBuilder
-            , _currentLine = _currLine + fromIntegral bsLines
-            , _currentCol = 1
-            , _mappings = newMappings
+            { _code = _code <> bsBuilder,
+              _currentLine = _currLine + fromIntegral bsLines,
+              _currentCol = 1,
+              _mappings = newMappings
             }
 
 addName :: ModuleName.Canonical -> A.Position -> Name -> Name -> Builder -> Builder
@@ -216,17 +216,17 @@ addName moduleName (A.Position line col) name genName (Builder _code _currLine _
   let nameBuilder = Name.toBuilder genName
       size = BSLazy.length $ B.toLazyByteString nameBuilder
    in Builder
-        { _code = _code <> nameBuilder
-        , _currentLine = _currLine
-        , _currentCol = _currCol + fromIntegral size
-        , _mappings =
+        { _code = _code <> nameBuilder,
+          _currentLine = _currLine,
+          _currentCol = _currCol + fromIntegral size,
+          _mappings =
             ( Mapping
-                { _m_src_line = line
-                , _m_src_col = col
-                , _m_src_module = moduleName
-                , _m_src_name = Just name
-                , _m_gen_line = _currLine
-                , _m_gen_col = _currCol
+                { _m_src_line = line,
+                  _m_src_col = col,
+                  _m_src_module = moduleName,
+                  _m_src_name = Just name,
+                  _m_gen_line = _currLine,
+                  _m_gen_col = _currCol
                 }
             )
               : _mappings
@@ -235,17 +235,17 @@ addName moduleName (A.Position line col) name genName (Builder _code _currLine _
 addTrackedDot :: ModuleName.Canonical -> A.Position -> Builder -> Builder
 addTrackedDot moduleName (A.Position line col) (Builder _code _currLine _currCol _mappings) =
   Builder
-    { _code = _code <> B.string7 "."
-    , _currentLine = _currLine
-    , _currentCol = _currCol + 1
-    , _mappings =
+    { _code = _code <> B.string7 ".",
+      _currentLine = _currLine,
+      _currentCol = _currCol + 1,
+      _mappings =
         ( Mapping
-            { _m_src_line = line
-            , _m_src_col = col
-            , _m_src_module = moduleName
-            , _m_src_name = Nothing
-            , _m_gen_line = _currLine
-            , _m_gen_col = _currCol
+            { _m_src_line = line,
+              _m_src_col = col,
+              _m_src_module = moduleName,
+              _m_src_name = Nothing,
+              _m_gen_line = _currLine,
+              _m_gen_col = _currCol
             }
         )
           : _mappings
@@ -254,10 +254,10 @@ addTrackedDot moduleName (A.Position line col) (Builder _code _currLine _currCol
 addLine :: Builder -> Builder
 addLine (Builder _code _currLine _currCol _mappings) =
   Builder
-    { _code = _code <> B.char7 '\n'
-    , _currentLine = _currLine + 1
-    , _currentCol = 1
-    , _mappings = _mappings
+    { _code = _code <> B.char7 '\n',
+      _currentLine = _currLine + 1,
+      _currentCol = 1,
+      _mappings = _mappings
     }
 
 -- ENCODE

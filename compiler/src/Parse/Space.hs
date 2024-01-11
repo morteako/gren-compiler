@@ -2,19 +2,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-module Parse.Space (
-  Parser,
-  --
-  chomp,
-  chompIndentedMoreThan,
-  chompAndCheckIndent,
-  --
-  checkIndent,
-  checkAligned,
-  checkFreshLine,
-  --
-  docComment,
-)
+module Parse.Space
+  ( Parser,
+    --
+    chomp,
+    chompIndentedMoreThan,
+    chompAndCheckIndent,
+    --
+    checkIndent,
+    checkAligned,
+    checkFreshLine,
+    --
+    docComment,
+  )
 where
 
 import AST.Source qualified as Src

@@ -1,36 +1,36 @@
-module Terminal (
-  app,
-  prefix,
-  Command (..),
-  Summary (..),
-  Flags,
-  noFlags,
-  flags,
-  (|--),
-  Flag,
-  flag,
-  onOff,
-  Parser (..),
-  Args,
-  noArgs,
-  required,
-  optional,
-  zeroOrMore,
-  oneOrMore,
-  oneOf,
-  require0,
-  require1,
-  require2,
-  require3,
-  require4,
-  require5,
-  RequiredArgs,
-  args,
-  exactly,
-  (!),
-  (?),
-  (...),
-)
+module Terminal
+  ( app,
+    prefix,
+    Command (..),
+    Summary (..),
+    Flags,
+    noFlags,
+    flags,
+    (|--),
+    Flag,
+    flag,
+    onOff,
+    Parser (..),
+    Args,
+    noArgs,
+    required,
+    optional,
+    zeroOrMore,
+    oneOrMore,
+    oneOf,
+    require0,
+    require1,
+    require2,
+    require3,
+    require4,
+    require5,
+    RequiredArgs,
+    args,
+    exactly,
+    (!),
+    (?),
+    (...),
+  )
 where
 
 import Data.List qualified as List
@@ -143,8 +143,8 @@ getCompIndex line =
         let groups = List.groupBy grouper (zip line [0 ..])
             rawChunks = drop 1 (filter (all (not . isSpace . fst)) groups)
          in return
-              ( findIndex 1 point rawChunks
-              , map (map fst) rawChunks
+              ( findIndex 1 point rawChunks,
+                map (map fst) rawChunks
               )
 
 grouper :: (Char, Int) -> (Char, Int) -> Bool
@@ -284,17 +284,16 @@ require5 func a b c d e =
 
 -- SUGGEST FILES
 
-{- | Helper for creating custom `Parser` values. It will suggest directories and
-file names:
-
-   suggestFiles []             -- suggests any file
-   suggestFiles ["gren"]        -- suggests only .gren files
-   suggestFiles ["js","html"]  -- suggests only .js and .html files
-
-Notice that you can limit the suggestion by the file extension! If you need
-something more elaborate, you can implement a function like this yourself that
-does whatever you need!
--}
+-- | Helper for creating custom `Parser` values. It will suggest directories and
+-- file names:
+--
+--   suggestFiles []             -- suggests any file
+--   suggestFiles ["gren"]        -- suggests only .gren files
+--   suggestFiles ["js","html"]  -- suggests only .js and .html files
+--
+-- Notice that you can limit the suggestion by the file extension! If you need
+-- something more elaborate, you can implement a function like this yourself that
+-- does whatever you need!
 _suggestFiles :: [String] -> String -> IO [String]
 _suggestFiles extensions string =
   let (dir, start) =

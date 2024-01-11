@@ -3,37 +3,36 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Parse.Primitives (
-  fromByteString,
-  Parser (..),
-  State (..),
-  Row,
-  Col,
-  oneOf,
-  oneOfWithFallback,
-  inContext,
-  specialize,
-  getPosition,
-  getCol,
-  addLocation,
-  addEnd,
-  getIndent,
-  setIndent,
-  withIndent,
-  withBacksetIndent,
-  word1,
-  word2,
-  unsafeIndex,
-  isWord,
-  getCharWidth,
-  Snippet (..),
-  fromSnippet,
-  snippetToBuilder,
-)
+module Parse.Primitives
+  ( fromByteString,
+    Parser (..),
+    State (..),
+    Row,
+    Col,
+    oneOf,
+    oneOfWithFallback,
+    inContext,
+    specialize,
+    getPosition,
+    getCol,
+    addLocation,
+    addEnd,
+    getIndent,
+    setIndent,
+    withIndent,
+    withBacksetIndent,
+    word1,
+    word2,
+    unsafeIndex,
+    isWord,
+    getCharWidth,
+    Snippet (..),
+    fromSnippet,
+    snippetToBuilder,
+  )
 where
 
 import Control.Applicative qualified as Applicative (Applicative (..))
-
 import Data.ByteString.Builder (Builder)
 import Data.ByteString.Builder qualified as Builder
 import Data.ByteString.Internal qualified as B
@@ -60,12 +59,12 @@ newtype Parser x a
 
 data State -- PERF try taking some out to avoid allocation
   = State
-  { _src :: ForeignPtr Word8
-  , _pos :: !(Ptr Word8)
-  , _end :: !(Ptr Word8)
-  , _indent :: !Word32
-  , _row :: !Row
-  , _col :: !Col
+  { _src :: ForeignPtr Word8,
+    _pos :: !(Ptr Word8),
+    _end :: !(Ptr Word8),
+    _indent :: !Word32,
+    _row :: !Row,
+    _col :: !Col
   }
 
 type Row = Word32
@@ -190,11 +189,11 @@ toErr row col toError =
 -- FROM SNIPPET
 
 data Snippet = Snippet
-  { _fptr :: ForeignPtr Word8
-  , _offset :: Int
-  , _length :: Int
-  , _offRow :: Row
-  , _offCol :: Col
+  { _fptr :: ForeignPtr Word8,
+    _offset :: Int,
+    _length :: Int,
+    _offRow :: Row,
+    _offCol :: Col
   }
   deriving (Show)
 
