@@ -1,54 +1,54 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Reporting.Error.Syntax
-  ( Error (..),
-    toReport,
-    --
-    Module (..),
-    Exposing (..),
-    --
-    Decl (..),
-    DeclType (..),
-    TypeAlias (..),
-    CustomType (..),
-    DeclDef (..),
-    Port (..),
-    --
-    Expr (..),
-    Parenthesized (..),
-    Record (..),
-    Array (..),
-    Func (..),
-    Case (..),
-    If (..),
-    Let (..),
-    Def (..),
-    Destruct (..),
-    --
-    Pattern (..),
-    PParenthesized (..),
-    PRecord (..),
-    PArray (..),
-    --
-    Type (..),
-    TParenthesis (..),
-    TRecord (..),
-    --
-    Char (..),
-    String (..),
-    Escape (..),
-    Number (..),
-    WildCard (..),
-    --
-    Space (..),
-    toSpaceReport,
-  )
+module Reporting.Error.Syntax (
+  Error (..),
+  toReport,
+  --
+  Module (..),
+  Exposing (..),
+  --
+  Decl (..),
+  DeclType (..),
+  TypeAlias (..),
+  CustomType (..),
+  DeclDef (..),
+  Port (..),
+  --
+  Expr (..),
+  Parenthesized (..),
+  Record (..),
+  Array (..),
+  Func (..),
+  Case (..),
+  If (..),
+  Let (..),
+  Def (..),
+  Destruct (..),
+  --
+  Pattern (..),
+  PParenthesized (..),
+  PRecord (..),
+  PArray (..),
+  --
+  Type (..),
+  TParenthesis (..),
+  TRecord (..),
+  --
+  Char (..),
+  String (..),
+  Escape (..),
+  Number (..),
+  WildCard (..),
+  --
+  Space (..),
+  toSpaceReport,
+)
 where
 
 import Data.Char qualified as Char
 import Data.Name qualified as Name
-import Data.Word (Word16)
+import Data.Word (Word32)
 import Gren.ModuleName qualified as ModuleName
 import Numeric (showHex)
 import Parse.Primitives (Col, Row)
@@ -271,7 +271,7 @@ data Case
   | CaseIndentPattern Row Col
   | CaseIndentArrow Row Col
   | CaseIndentBranch Row Col
-  | CasePatternAlignment Word16 Row Col
+  | CasePatternAlignment Word32 Row Col
   deriving (Show)
 
 data If
@@ -294,7 +294,7 @@ data If
 data Let
   = LetSpace Space Row Col
   | LetIn Row Col
-  | LetDefAlignment Word16 Row Col
+  | LetDefAlignment Word32 Row Col
   | LetDefName Row Col
   | LetDef Name.Name Def Row Col
   | LetDestruct Destruct Row Col
@@ -328,7 +328,7 @@ data Def
   | DefIndentEquals Row Col
   | DefIndentType Row Col
   | DefIndentBody Row Col
-  | DefAlignment Word16 Row Col
+  | DefAlignment Word32 Row Col
   deriving (Show)
 
 data Destruct
@@ -351,7 +351,7 @@ data Pattern
   | PChar Char Row Col
   | PString String Row Col
   | PNumber Number Row Col
-  | PFloat Word16 Row Col
+  | PFloat Word32 Row Col
   | PAlias Row Col
   | PSpace Space Row Col
   | --
@@ -434,7 +434,7 @@ data TParenthesis
 data Char
   = CharEndless
   | CharEscape Escape
-  | CharNotString Word16
+  | CharNotString Word32
   deriving (Show)
 
 data String
@@ -446,9 +446,9 @@ data String
 
 data Escape
   = EscapeUnknown
-  | BadUnicodeFormat Word16
-  | BadUnicodeCode Word16
-  | BadUnicodeLength Word16 Int Int
+  | BadUnicodeFormat Word32
+  | BadUnicodeCode Word32
+  | BadUnicodeLength Word32 Int Int
   deriving (Show)
 
 data Number
@@ -479,13 +479,13 @@ toReport source err =
        in Report.Report "MODULE NAME MISSING" region [] $
             D.stack
               [ D.reflow $
-                  "I need the module name to be declared at the top of this file, like this:",
-                D.indent 4 $
+                  "I need the module name to be declared at the top of this file, like this:"
+              , D.indent 4 $
                   D.fillSep $
-                    [D.cyan "module", D.fromName name, D.cyan "exposing", "(..)"],
-                D.reflow $
-                  "Try adding that as the first line of your file!",
-                D.toSimpleNote $
+                    [D.cyan "module", D.fromName name, D.cyan "exposing", "(..)"]
+              , D.reflow $
+                  "Try adding that as the first line of your file!"
+              , D.toSimpleNote $
                   "It is best to replace (..) with an explicit list of types and\
                   \ functions you want to expose. When you know a value is only used\
                   \ within this module, you can refactor without worrying about uses\
@@ -499,15 +499,15 @@ toReport source err =
           source
           region
           Nothing
-          ( "It looks like this module name is out of sync:",
-            D.stack
+          ( "It looks like this module name is out of sync:"
+          , D.stack
               [ D.reflow $
                   "I need it to match the file path, so I was expecting to see `"
                     ++ ModuleName.toChars expectedName
-                    ++ "` here. Make the following change, and you should be all set!",
-                D.indent 4 $
-                  D.dullyellow (D.fromName actualName) <> " -> " <> D.green (D.fromName expectedName),
-                D.toSimpleNote $
+                    ++ "` here. Make the following change, and you should be all set!"
+              , D.indent 4 $
+                  D.dullyellow (D.fromName actualName) <> " -> " <> D.green (D.fromName expectedName)
+              , D.toSimpleNote $
                   "I require that module names correspond to file paths. This makes it much\
                   \ easier to explore unfamiliar codebases! So if you want to keep the current\
                   \ module name, try renaming the file instead."
@@ -520,24 +520,24 @@ toReport source err =
           region
           Nothing
           ( D.reflow $
-              "You are declaring ports in a normal module.",
-            D.stack
+              "You are declaring ports in a normal module."
+          , D.stack
               [ D.fillSep
-                  [ "Switch",
-                    "this",
-                    "to",
-                    "say",
-                    D.cyan "port module",
-                    "instead,",
-                    "marking",
-                    "that",
-                    "this",
-                    "module",
-                    "contains",
-                    "port",
-                    "declarations."
-                  ],
-                D.link
+                  [ "Switch"
+                  , "this"
+                  , "to"
+                  , "say"
+                  , D.cyan "port module"
+                  , "instead,"
+                  , "marking"
+                  , "that"
+                  , "this"
+                  , "module"
+                  , "contains"
+                  , "port"
+                  , "declarations."
+                  ]
+              , D.link
                   "Note"
                   "Ports are not a traditional FFI for calling JS functions directly. They need a different mindset! Read"
                   "ports"
@@ -551,18 +551,18 @@ toReport source err =
           region
           Nothing
           ( D.reflow $
-              "This module does not declare any ports, but it says it will:",
-            D.fillSep
-              [ "Switch",
-                "this",
-                "to",
-                D.cyan "module",
-                "and",
-                "you",
-                "should",
-                "be",
-                "all",
-                "set!"
+              "This module does not declare any ports, but it says it will:"
+          , D.fillSep
+              [ "Switch"
+              , "this"
+              , "to"
+              , D.cyan "module"
+              , "and"
+              , "you"
+              , "should"
+              , "be"
+              , "all"
+              , "set!"
               ]
           )
     NoPortsInPackage (A.At region _) ->
@@ -572,11 +572,11 @@ toReport source err =
           region
           Nothing
           ( D.reflow $
-              "Packages cannot declare any ports, so I am getting stuck here:",
-            D.stack
+              "Packages cannot declare any ports, so I am getting stuck here:"
+          , D.stack
               [ D.reflow $
-                  "Remove this port declaration.",
-                noteForPortsInPackage
+                  "Remove this port declaration."
+              , noteForPortsInPackage
               ]
           )
     NoPortModulesInPackage region ->
@@ -586,22 +586,22 @@ toReport source err =
           region
           Nothing
           ( D.reflow $
-              "Packages cannot declare any ports, so I am getting stuck here:",
-            D.stack
+              "Packages cannot declare any ports, so I am getting stuck here:"
+          , D.stack
               [ D.fillSep $
-                  [ "Remove",
-                    "the",
-                    D.cyan "port",
-                    "keyword",
-                    "and",
-                    "I",
-                    "should",
-                    "be",
-                    "able",
-                    "to",
-                    "continue."
-                  ],
-                noteForPortsInPackage
+                  [ "Remove"
+                  , "the"
+                  , D.cyan "port"
+                  , "keyword"
+                  , "and"
+                  , "I"
+                  , "should"
+                  , "be"
+                  , "able"
+                  , "to"
+                  , "continue."
+                  ]
+              , noteForPortsInPackage
               ]
           )
     NoEffectsOutsideKernel region ->
@@ -612,11 +612,11 @@ toReport source err =
           Nothing
           ( D.reflow $
               "It is not possible to declare an `effect module` outside the gren-lang organization,\
-              \ so I am getting stuck here:",
-            D.stack
+              \ so I am getting stuck here:"
+          , D.stack
               [ D.reflow $
-                  "Switch to a normal module declaration.",
-                D.toSimpleNote $
+                  "Switch to a normal module declaration."
+              , D.toSimpleNote $
                   "Effect modules are designed to allow certain core functionality to be\
                   \ defined separately from the compiler. So the gren-lang organization has access to\
                   \ this so that certain changes, extensions, and fixes can be introduced without\
@@ -638,8 +638,8 @@ noteForPortsInPackage =
         \ from security issues on install and that you are not going to get any runtime\
         \ exceptions coming from your new dependency. This design also sets the ecosystem\
         \ up to target other platforms more easily (like mobile phones, WebAssembly, etc.)\
-        \ since no community code explicitly depends on JavaScript even existing.",
-      D.reflow $
+        \ since no community code explicitly depends on JavaScript even existing."
+    , D.reflow $
         "Given that overall goal, allowing ports in packages would lead to some pretty\
         \ surprising behavior. If ports were allowed in packages, you could install a\
         \ package but not realize that it brings in an indirect dependency that defines a\
@@ -667,16 +667,16 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I am parsing an `module` declaration, but I got stuck here:",
-                D.stack
+                  "I am parsing an `module` declaration, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "Here are some examples of valid `module` declarations:",
-                    D.indent 4 $
+                      "Here are some examples of valid `module` declarations:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "module", "Main", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "module", "Dict", D.cyan "exposing", "(Dict, empty, get)"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "module", "Main", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "module", "Dict", D.cyan "exposing", "(Dict, empty, get)"]
+                        ]
+                  , D.reflow $
                       "I generally recommend using an explicit exposing list. I can skip compiling a bunch\
                       \ of files when the public interface of a module stays the same, so exposing fewer\
                       \ values can help improve compile times!"
@@ -690,18 +690,18 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I was parsing an `module` declaration until I got stuck here:",
-                D.stack
+                  "I was parsing an `module` declaration until I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see the module name next, like in these examples:",
-                    D.indent 4 $
+                      "I was expecting to see the module name next, like in these examples:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "module", "Dict", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "module", "Maybe", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "module", "Html.Attributes", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "module", "Json.Decode", D.cyan "exposing", "(..)"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "module", "Dict", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "module", "Maybe", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "module", "Html.Attributes", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "module", "Json.Decode", D.cyan "exposing", "(..)"]
+                        ]
+                  , D.reflow $
                       "Notice that the module names all start with capital letters. That is required!"
                   ]
               )
@@ -715,16 +715,16 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I am parsing an `port module` declaration, but I got stuck here:",
-                D.stack
+                  "I am parsing an `port module` declaration, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "Here are some examples of valid `port module` declarations:",
-                    D.indent 4 $
+                      "Here are some examples of valid `port module` declarations:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "port", D.cyan "module", "WebSockets", D.cyan "exposing", "(send, listen, keepAlive)"],
-                          D.fillSep [D.cyan "port", D.cyan "module", "Maps", D.cyan "exposing", "(Location, goto)"]
-                        ],
-                    D.link "Note" "Read" "ports" "for more help."
+                        [ D.fillSep [D.cyan "port", D.cyan "module", "WebSockets", D.cyan "exposing", "(send, listen, keepAlive)"]
+                        , D.fillSep [D.cyan "port", D.cyan "module", "Maps", D.cyan "exposing", "(Location, goto)"]
+                        ]
+                  , D.link "Note" "Read" "ports" "for more help."
                   ]
               )
     PortModuleName row col ->
@@ -735,16 +735,16 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I was parsing an `module` declaration until I got stuck here:",
-                D.stack
+                  "I was parsing an `module` declaration until I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see the module name next, like in these examples:",
-                    D.indent 4 $
+                      "I was expecting to see the module name next, like in these examples:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "port", D.cyan "module", "WebSockets", D.cyan "exposing", "(send, listen, keepAlive)"],
-                          D.fillSep [D.cyan "port", D.cyan "module", "Maps", D.cyan "exposing", "(Location, goto)"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "port", D.cyan "module", "WebSockets", D.cyan "exposing", "(send, listen, keepAlive)"]
+                        , D.fillSep [D.cyan "port", D.cyan "module", "Maps", D.cyan "exposing", "(Location, goto)"]
+                        ]
+                  , D.reflow $
                       "Notice that the module names start with capital letters. That is required!"
                   ]
               )
@@ -758,8 +758,8 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I cannot parse this module declaration:",
-                D.reflow $
+                  "I cannot parse this module declaration:"
+              , D.reflow $
                   "This type of module is reserved for the gren-lang organization. It is used to\
                   \ define certain effects, avoiding building them into the compiler."
               )
@@ -773,8 +773,8 @@ toParseErrorReport source modul =
                 region
                 Nothing
                 ( D.reflow $
-                    "This `" ++ keyword ++ "` should not have any spaces before it:",
-                  D.reflow $
+                    "This `" ++ keyword ++ "` should not have any spaces before it:"
+                , D.reflow $
                     "Delete the spaces before `" ++ keyword ++ "` until there are none left!"
                 )
        in case Code.whatIsNext source row col of
@@ -789,22 +789,22 @@ toParseErrorReport source modul =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck here:",
-                    D.stack
+                      "I got stuck here:"
+                  , D.stack
                       [ D.reflow $
                           "I am not sure what is going on, but I recommend starting an Gren\
-                          \ file with the following lines:",
-                        D.indent 4 $
+                          \ file with the following lines:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ D.fillSep [D.cyan "import", "Html"],
-                              "",
-                              "main =",
-                              "  Html.text " <> D.dullyellow "\"Hello!\""
-                            ],
-                        D.reflow $
+                            [ D.fillSep [D.cyan "import", "Html"]
+                            , ""
+                            , "main ="
+                            , "  Html.text " <> D.dullyellow "\"Hello!\""
+                            ]
+                      , D.reflow $
                           "You should be able to copy those lines directly into your file. Check out the\
-                          \ examples at <https://gren-lang.org/examples> for more help getting started!",
-                        D.toSimpleNote $
+                          \ examples at <https://gren-lang.org/examples> for more help getting started!"
+                      , D.toSimpleNote $
                           "This can also happen when something is indented too much!"
                       ]
                   )
@@ -818,20 +818,20 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I was parsing an `import` until I got stuck here:",
-                D.stack
+                  "I was parsing an `import` until I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see a module name next, like in these examples:",
-                    D.indent 4 $
+                      "I was expecting to see a module name next, like in these examples:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "import", "Dict"],
-                          D.fillSep [D.cyan "import", "Maybe"],
-                          D.fillSep [D.cyan "import", "Html.Attributes", D.cyan "as", "A"],
-                          D.fillSep [D.cyan "import", "Json.Decode", D.cyan "exposing", "(..)"]
-                        ],
-                    D.reflow $
-                      "Notice that the module names all start with capital letters. That is required!",
-                    D.reflowLink "Read" "imports" "to learn more."
+                        [ D.fillSep [D.cyan "import", "Dict"]
+                        , D.fillSep [D.cyan "import", "Maybe"]
+                        , D.fillSep [D.cyan "import", "Html.Attributes", D.cyan "as", "A"]
+                        , D.fillSep [D.cyan "import", "Json.Decode", D.cyan "exposing", "(..)"]
+                        ]
+                  , D.reflow $
+                      "Notice that the module names all start with capital letters. That is required!"
+                  , D.reflowLink "Read" "imports" "to learn more."
                   ]
               )
     ImportAs row col ->
@@ -844,19 +844,19 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I was parsing an `import` until I got stuck here:",
-                D.stack
+                  "I was parsing an `import` until I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an alias next, like in these examples:",
-                    D.indent 4 $
+                      "I was expecting to see an alias next, like in these examples:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "import", "Html.Attributes", D.cyan "as", "Attr"],
-                          D.fillSep [D.cyan "import", "WebGL.Texture", D.cyan "as", "Texture"],
-                          D.fillSep [D.cyan "import", "Json.Decode", D.cyan "as", "D"]
-                        ],
-                    D.reflow $
-                      "Notice that the alias always starts with a capital letter. That is required!",
-                    D.reflowLink "Read" "imports" "to learn more."
+                        [ D.fillSep [D.cyan "import", "Html.Attributes", D.cyan "as", "Attr"]
+                        , D.fillSep [D.cyan "import", "WebGL.Texture", D.cyan "as", "Texture"]
+                        , D.fillSep [D.cyan "import", "Json.Decode", D.cyan "as", "D"]
+                        ]
+                  , D.reflow $
+                      "Notice that the alias always starts with a capital letter. That is required!"
+                  , D.reflowLink "Read" "imports" "to learn more."
                   ]
               )
     ImportExposing row col ->
@@ -877,17 +877,17 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "I was parsing an `import` until I got stuck here:",
-                D.stack
+                  "I was parsing an `import` until I got stuck here:"
+              , D.stack
                   [ D.reflow $
                       "I was expecting to see the list of exposed values next. For example, here\
-                      \ are two ways to expose values from the `Html` module:",
-                    D.indent 4 $
+                      \ are two ways to expose values from the `Html` module:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
+                        ]
+                  , D.reflow $
                       "I generally recommend the second style. It is more explicit, making it\
                       \ much easier to figure out where values are coming from in large projects!"
                   ]
@@ -900,8 +900,8 @@ toParseErrorReport source modul =
               region
               Nothing
               ( D.reflow $
-                  "Something went wrong in this infix operator declaration:",
-                D.reflow $
+                  "Something went wrong in this infix operator declaration:"
+              , D.reflow $
                   "This feature is used by the gren-lang organization to define the\
                   \ languages built-in operators."
               )
@@ -921,8 +921,8 @@ toWeirdEndReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I got stuck on this reserved word:",
-                D.reflow $
+                  "I got stuck on this reserved word:"
+              , D.reflow $
                   "The name `" ++ keyword ++ "` is reserved, so try using a different name?"
               )
     Code.Operator op ->
@@ -933,8 +933,8 @@ toWeirdEndReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I ran into an unexpected symbol:",
-                D.reflow $
+                  "I ran into an unexpected symbol:"
+              , D.reflow $
                   "I was not expecting to see a "
                     ++ op
                     ++ " here. Try deleting it? Maybe\
@@ -948,8 +948,8 @@ toWeirdEndReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I ran into an unexpected " ++ term ++ ":",
-                D.reflow $
+                  "I ran into an unexpected " ++ term ++ ":"
+              , D.reflow $
                   "This " ++ bracket : " does not match up with an earlier open " ++ term ++ ". Try deleting it?"
               )
     Code.Lower c cs ->
@@ -960,8 +960,8 @@ toWeirdEndReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I got stuck on this name:",
-                D.reflow $
+                  "I got stuck on this name:"
+              , D.reflow $
                   "It is confusing me a lot! Normally I can give fairly specific hints, but\
                   \ something is really tripping me up this time."
               )
@@ -973,8 +973,8 @@ toWeirdEndReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I got stuck on this name:",
-                D.reflow $
+                  "I got stuck on this name:"
+              , D.reflow $
                   "It is confusing me a lot! Normally I can give fairly specific hints, but\
                   \ something is really tripping me up this time."
               )
@@ -988,10 +988,10 @@ toWeirdEndReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck on this semicolon:",
-                    D.stack
-                      [ D.reflow $ "Try removing it?",
-                        D.toSimpleNote $
+                      "I got stuck on this semicolon:"
+                  , D.stack
+                      [ D.reflow $ "Try removing it?"
+                      , D.toSimpleNote $
                           "Some languages require semicolons at the end of each statement. These are\
                           \ often called C-like languages, and they usually share a lot of language design\
                           \ choices. (E.g. side-effects, for loops, etc.) Gren manages effects with commands\
@@ -1007,11 +1007,11 @@ toWeirdEndReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck on this comma:",
-                    D.stack
+                      "I got stuck on this comma:"
+                  , D.stack
                       [ D.reflow $
-                          "I do not think I am parsing an array right now. Try deleting the comma?",
-                        D.toSimpleNote $
+                          "I do not think I am parsing an array right now. Try deleting the comma?"
+                      , D.toSimpleNote $
                           "If this is supposed to be part of an array, the problem may be a bit earlier.\
                           \ Perhaps the opening [ is missing? Or perhaps some value in the array has an extra\
                           \ closing ] that is making me think the array ended earlier?"
@@ -1024,25 +1024,25 @@ toWeirdEndReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck on this character:",
-                    D.stack
+                      "I got stuck on this character:"
+                  , D.stack
                       [ D.reflow $
                           "It is not used for anything in Gren syntax. It is used for multi-line strings in\
                           \ some languages though, so if you want a string that spans multiple lines, you\
-                          \ can use Gren's multi-line string syntax like this:",
-                        D.dullyellow $
+                          \ can use Gren's multi-line string syntax like this:"
+                      , D.dullyellow $
                           D.indent 4 $
                             D.vcat $
-                              [ "\"\"\"",
-                                "# Multi-line Strings",
-                                "",
-                                "- start with triple double quotes",
-                                "- write whatever you want",
-                                "- no need to escape newlines or double quotes",
-                                "- end with triple double quotes",
-                                "\"\"\""
-                              ],
-                        D.reflow $
+                              [ "\"\"\""
+                              , "# Multi-line Strings"
+                              , ""
+                              , "- start with triple double quotes"
+                              , "- write whatever you want"
+                              , "- no need to escape newlines or double quotes"
+                              , "- end with triple double quotes"
+                              , "\"\"\""
+                              ]
+                      , D.reflow $
                           "Otherwise I do not know what is going on! Try removing the character?"
                       ]
                   )
@@ -1053,8 +1053,8 @@ toWeirdEndReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck on this dollar sign:",
-                    D.reflow $
+                      "I got stuck on this dollar sign:"
+                  , D.reflow $
                       "It is not used for anything in Gren syntax. Are you coming from a language where\
                       \ dollar signs can be used in variable names? If so, try a name that (1) starts\
                       \ with a letter and (2) only contains letters, numbers, and underscores."
@@ -1067,8 +1067,8 @@ toWeirdEndReport source row col =
                       region
                       Nothing
                       ( D.reflow $
-                          "I got stuck on this symbol:",
-                        D.reflow $
+                          "I got stuck on this symbol:"
+                      , D.reflow $
                           "It is not used for anything in Gren syntax. Try removing it?"
                       )
             _ ->
@@ -1078,8 +1078,8 @@ toWeirdEndReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I got stuck here:",
-                    D.reflow $
+                      "I got stuck here:"
+                  , D.reflow $
                       "Whatever I am running into is confusing me a lot! Normally I can give fairly\
                       \ specific hints, but something is really tripping me up this time."
                   )
@@ -1095,20 +1095,20 @@ toImportReport source row col =
           region
           Nothing
           ( D.reflow $
-              "I am partway through parsing an import, but I got stuck here:",
-            D.stack
+              "I am partway through parsing an import, but I got stuck here:"
+          , D.stack
               [ D.reflow $
-                  "Here are some examples of valid `import` declarations:",
-                D.indent 4 $
+                  "Here are some examples of valid `import` declarations:"
+              , D.indent 4 $
                   D.vcat $
-                    [ D.fillSep [D.cyan "import", "Html"],
-                      D.fillSep [D.cyan "import", "Html", D.cyan "as", "H"],
-                      D.fillSep [D.cyan "import", "Html", D.cyan "as", "H", D.cyan "exposing", "(..)"],
-                      D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
-                    ],
-                D.reflow $
-                  "You are probably trying to import a different module, but try to make it look like one of these examples!",
-                D.reflowLink "Read" "imports" "to learn more."
+                    [ D.fillSep [D.cyan "import", "Html"]
+                    , D.fillSep [D.cyan "import", "Html", D.cyan "as", "H"]
+                    , D.fillSep [D.cyan "import", "Html", D.cyan "as", "H", D.cyan "exposing", "(..)"]
+                    , D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
+                    ]
+              , D.reflow $
+                  "You are probably trying to import a different module, but try to make it look like one of these examples!"
+              , D.reflowLink "Read" "imports" "to learn more."
               ]
           )
 
@@ -1128,30 +1128,30 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I want to parse exposed values, but I am getting stuck here:",
-                D.stack
+                  "I want to parse exposed values, but I am getting stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Exposed",
-                        "values",
-                        "are",
-                        "always",
-                        "surrounded",
-                        "by",
-                        "parentheses.",
-                        "So",
-                        "try",
-                        "adding",
-                        "a",
-                        D.green "(",
-                        "here?"
-                      ],
-                    D.toSimpleNote "Here are some valid examples of `exposing` for reference:",
-                    D.indent 4 $
+                      [ "Exposed"
+                      , "values"
+                      , "are"
+                      , "always"
+                      , "surrounded"
+                      , "by"
+                      , "parentheses."
+                      , "So"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.green "("
+                      , "here?"
+                      ]
+                  , D.toSimpleNote "Here are some valid examples of `exposing` for reference:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"],
-                          D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"]
+                        , D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(Html, div, text)"]
+                        ]
+                  , D.reflow $
                       "If you are getting tripped up, you can just expose everything for now. It should\
                       \ get easier to make an explicit exposing list as you see more examples in the wild."
                   ]
@@ -1167,8 +1167,8 @@ toExposingReport source exposing startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I got stuck on this reserved word:",
-                    D.reflow $
+                      "I got stuck on this reserved word:"
+                  , D.reflow $
                       "It looks like you are trying to expose `" ++ keyword ++ "` but that is a reserved word. Is there a typo?"
                   )
         Code.Operator op ->
@@ -1180,11 +1180,11 @@ toExposingReport source exposing startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I got stuck on this symbol:",
-                    D.stack
+                      "I got stuck on this symbol:"
+                  , D.stack
                       [ D.reflow $
-                          "If you are trying to expose an operator, add parentheses around it like this:",
-                        D.indent 4 $ D.dullyellow (D.fromChars op) <> " -> " <> D.green ("(" <> D.fromChars op <> ")")
+                          "If you are trying to expose an operator, add parentheses around it like this:"
+                      , D.indent 4 $ D.dullyellow (D.fromChars op) <> " -> " <> D.green ("(" <> D.fromChars op <> ")")
                       ]
                   )
         _ ->
@@ -1196,17 +1196,17 @@ toExposingReport source exposing startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I got stuck while parsing these exposed values:",
-                    D.stack
+                      "I got stuck while parsing these exposed values:"
+                  , D.stack
                       [ D.reflow $
                           "I do not have an exact recommendation, so here are some valid examples\
-                          \ of `exposing` for reference:",
-                        D.indent 4 $
+                          \ of `exposing` for reference:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"],
-                              D.fillSep [D.cyan "import", "Basics", D.cyan "exposing", "(Int, Float, Bool(..), (+), not, sqrt)"]
-                            ],
-                        D.reflow $
+                            [ D.fillSep [D.cyan "import", "Html", D.cyan "exposing", "(..)"]
+                            , D.fillSep [D.cyan "import", "Basics", D.cyan "exposing", "(Int, Float, Bool(..), (+), not, sqrt)"]
+                            ]
+                      , D.reflow $
                           "These examples show how to expose types, variants, operators, and functions. Everything\
                           \ should be some permutation of these examples, just with different names."
                       ]
@@ -1220,33 +1220,33 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw an open parenthesis, so I was expecting an operator next:",
-                D.fillSep $
-                  [ "It",
-                    "is",
-                    "possible",
-                    "to",
-                    "expose",
-                    "operators,",
-                    "so",
-                    "I",
-                    "was",
-                    "expecting",
-                    "to",
-                    "see",
-                    "something",
-                    "like",
-                    D.dullyellow "(+)",
-                    "or",
-                    D.dullyellow "(|=)",
-                    "or",
-                    D.dullyellow "(||)",
-                    "after",
-                    "I",
-                    "saw",
-                    "that",
-                    "open",
-                    "parenthesis."
+                  "I just saw an open parenthesis, so I was expecting an operator next:"
+              , D.fillSep $
+                  [ "It"
+                  , "is"
+                  , "possible"
+                  , "to"
+                  , "expose"
+                  , "operators,"
+                  , "so"
+                  , "I"
+                  , "was"
+                  , "expecting"
+                  , "to"
+                  , "see"
+                  , "something"
+                  , "like"
+                  , D.dullyellow "(+)"
+                  , "or"
+                  , D.dullyellow "(|=)"
+                  , "or"
+                  , D.dullyellow "(||)"
+                  , "after"
+                  , "I"
+                  , "saw"
+                  , "that"
+                  , "open"
+                  , "parenthesis."
                   ]
               )
     ExposingOperatorReserved op row col ->
@@ -1258,8 +1258,8 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I cannot expose this as an operator:",
-                case op of
+                  "I cannot expose this as an operator:"
+              , case op of
                   BadDot -> D.reflow "Try getting rid of this entry? Maybe I can give you a better hint after that?"
                   BadPipe -> D.fillSep ["Maybe", "you", "want", D.dullyellow "(||)", "instead?"]
                   BadArrow -> D.reflow "Try getting rid of this entry? Maybe I can give you a better hint after that?"
@@ -1275,26 +1275,26 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "It looks like you are exposing an operator, but I got stuck here:",
-                D.fillSep $
-                  [ "I",
-                    "was",
-                    "expecting",
-                    "to",
-                    "see",
-                    "the",
-                    "closing",
-                    "parenthesis",
-                    "immediately",
-                    "after",
-                    "the",
-                    "operator.",
-                    "Try",
-                    "adding",
-                    "a",
-                    D.green ")",
-                    "right",
-                    "here?"
+                  "It looks like you are exposing an operator, but I got stuck here:"
+              , D.fillSep $
+                  [ "I"
+                  , "was"
+                  , "expecting"
+                  , "to"
+                  , "see"
+                  , "the"
+                  , "closing"
+                  , "parenthesis"
+                  , "immediately"
+                  , "after"
+                  , "the"
+                  , "operator."
+                  , "Try"
+                  , "adding"
+                  , "a"
+                  , D.green ")"
+                  , "right"
+                  , "here?"
                   ]
               )
     ExposingEnd row col ->
@@ -1306,8 +1306,8 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing exposed values, but I got stuck here:",
-                D.reflow $
+                  "I was partway through parsing exposed values, but I got stuck here:"
+              , D.reflow $
                   "Maybe there is a comma missing before this?"
               )
     ExposingTypePrivacy row col ->
@@ -1319,35 +1319,35 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "It looks like you are trying to expose the variants of a custom type:",
-                D.stack
+                  "It looks like you are trying to expose the variants of a custom type:"
+              , D.stack
                   [ D.fillSep $
-                      [ "You",
-                        "need",
-                        "to",
-                        "write",
-                        "something",
-                        "like",
-                        D.dullyellow "Status(..)",
-                        "or",
-                        D.dullyellow "Entity(..)",
-                        "though.",
-                        "It",
-                        "is",
-                        "all",
-                        "or",
-                        "nothing,",
-                        "otherwise",
-                        "`case`",
-                        "expressions",
-                        "could",
-                        "miss",
-                        "a",
-                        "variant",
-                        "and",
-                        "crash!"
-                      ],
-                    D.toSimpleNote $
+                      [ "You"
+                      , "need"
+                      , "to"
+                      , "write"
+                      , "something"
+                      , "like"
+                      , D.dullyellow "Status(..)"
+                      , "or"
+                      , D.dullyellow "Entity(..)"
+                      , "though."
+                      , "It"
+                      , "is"
+                      , "all"
+                      , "or"
+                      , "nothing,"
+                      , "otherwise"
+                      , "`case`"
+                      , "expressions"
+                      , "could"
+                      , "miss"
+                      , "a"
+                      , "variant"
+                      , "and"
+                      , "crash!"
+                      ]
+                  , D.toSimpleNote $
                       "It is often best to keep the variants hidden! If someone pattern matches on\
                       \ the variants, it is a MAJOR change if any new variants are added. Suddenly\
                       \ their `case` expressions do not cover all variants! So if you do not need\
@@ -1364,23 +1364,23 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing exposed values, but I got stuck here:",
-                D.stack
+                  "I was partway through parsing exposed values, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "closing",
-                        "parenthesis.",
-                        "Try",
-                        "adding",
-                        "a",
-                        D.green ")",
-                        "right",
-                        "here?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "closing"
+                      , "parenthesis."
+                      , "Try"
+                      , "adding"
+                      , "a"
+                      , D.green ")"
+                      , "right"
+                      , "here?"
+                      ]
+                  , D.toSimpleNote $
                       "I can get confused when there is not enough indentation, so if you already\
                       \ have a closing parenthesis, it probably just needs some spaces in front of it."
                   ]
@@ -1394,8 +1394,8 @@ toExposingReport source exposing startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing exposed values, but I got stuck here:",
-                D.reflow $
+                  "I was partway through parsing exposed values, but I got stuck here:"
+              , D.reflow $
                   "I was expecting another value to expose."
               )
 
@@ -1412,8 +1412,8 @@ toSpaceReport source space row col =
               region
               Nothing
               ( D.reflow $
-                  "I ran into a tab, but tabs are not allowed in Gren files.",
-                D.reflow $
+                  "I ran into a tab, but tabs are not allowed in Gren files."
+              , D.reflow $
                   "Replace the tab with spaces."
               )
     EndlessMultiComment ->
@@ -1424,10 +1424,10 @@ toSpaceReport source space row col =
               region
               Nothing
               ( D.reflow $
-                  "I cannot find the end of this multi-line comment:",
-                D.stack -- "{-"
-                  [ D.reflow "Add a -} somewhere after this to end the comment.",
-                    D.toSimpleHint
+                  "I cannot find the end of this multi-line comment:"
+              , D.stack -- "{-"
+                  [ D.reflow "Add a -} somewhere after this to end the comment."
+                  , D.toSimpleHint
                       "Multi-line comments can be nested in Gren, so {- {- -} -} is a comment\
                       \ that happens to contain another comment. Like parentheses and curly braces,\
                       \ the start and end markers must always be balanced. Maybe that is the problem?"
@@ -1441,7 +1441,7 @@ toRegion row col =
   let pos = A.Position row col
    in A.Region pos pos
 
-toWiderRegion :: Row -> Col -> Word16 -> A.Region
+toWiderRegion :: Row -> Col -> Word32 -> A.Region
 toWiderRegion row col extra =
   A.Region
     (A.Position row col)
@@ -1474,8 +1474,8 @@ toDeclarationsReport source decl =
               region
               Nothing
               ( D.reflow $
-                  "I just saw a doc comment, but then I got stuck here:",
-                D.reflow $
+                  "I just saw a doc comment, but then I got stuck here:"
+              , D.reflow $
                   "I was expecting to see the corresponding declaration next, starting on a fresh\
                   \ line with no indentation."
               )
@@ -1491,8 +1491,8 @@ toDeclStartReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I was not expecting to see a " ++ term ++ " here:",
-                D.reflow $
+                  "I was not expecting to see a " ++ term ++ " here:"
+              , D.reflow $
                   "This " ++ bracket : " does not match up with an earlier open " ++ term ++ ". Try deleting it?"
               )
     Code.Keyword keyword ->
@@ -1503,8 +1503,8 @@ toDeclStartReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I was not expecting to run into the `" ++ keyword ++ "` keyword here:",
-                case keyword of
+                  "I was not expecting to run into the `" ++ keyword ++ "` keyword here:"
+              , case keyword of
                   "import" ->
                     D.reflow $
                       "It is reserved for declaring imports at the top of your module. If you want\
@@ -1513,46 +1513,46 @@ toDeclStartReport source row col =
                   "case" ->
                     D.stack
                       [ D.reflow $
-                          "It is reserved for writing `case` expressions. Try using a different name?",
-                        D.toSimpleNote $
+                          "It is reserved for writing `case` expressions. Try using a different name?"
+                      , D.toSimpleNote $
                           "If you are trying to write a `case` expression, it needs to be part of a\
-                          \ definition. So you could write something like this instead:",
-                        D.indent 4 $
+                          \ definition. So you could write something like this instead:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ D.indent 0 $ D.fillSep ["getWidth", "maybeWidth", "="],
-                              D.indent 2 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"],
-                              D.indent 4 $ D.fillSep [D.blue "Just", "width", "->"],
-                              D.indent 6 $ D.fillSep ["width", "+", D.dullyellow "200"],
-                              "",
-                              D.indent 4 $ D.fillSep [D.blue "Nothing", "->"],
-                              D.indent 6 $ D.fillSep [D.dullyellow "400"]
-                            ],
-                        D.reflow $
+                            [ D.indent 0 $ D.fillSep ["getWidth", "maybeWidth", "="]
+                            , D.indent 2 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"]
+                            , D.indent 4 $ D.fillSep [D.blue "Just", "width", "->"]
+                            , D.indent 6 $ D.fillSep ["width", "+", D.dullyellow "200"]
+                            , ""
+                            , D.indent 4 $ D.fillSep [D.blue "Nothing", "->"]
+                            , D.indent 6 $ D.fillSep [D.dullyellow "400"]
+                            ]
+                      , D.reflow $
                           "This defines a `getWidth` function that you can use elsewhere in your program."
                       ]
                   "if" ->
                     D.stack
                       [ D.reflow $
-                          "It is reserved for writing `if` expressions. Try using a different name?",
-                        D.toSimpleNote $
+                          "It is reserved for writing `if` expressions. Try using a different name?"
+                      , D.toSimpleNote $
                           "If you are trying to write an `if` expression, it needs to be part of a\
-                          \ definition. So you could write something like this instead:",
-                        D.indent 4 $
+                          \ definition. So you could write something like this instead:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet name =",
-                              D.fillSep $
-                                [ " ",
-                                  D.cyan "if",
-                                  "name",
-                                  "==",
-                                  D.dullyellow "\"Abraham Lincoln\"",
-                                  D.cyan "then",
-                                  D.dullyellow "\"Greetings Mr. President.\"",
-                                  D.cyan "else",
-                                  D.dullyellow "\"Hey!\""
+                            [ "greet name ="
+                            , D.fillSep $
+                                [ " "
+                                , D.cyan "if"
+                                , "name"
+                                , "=="
+                                , D.dullyellow "\"Abraham Lincoln\""
+                                , D.cyan "then"
+                                , D.dullyellow "\"Greetings Mr. President.\""
+                                , D.cyan "else"
+                                , D.dullyellow "\"Hey!\""
                                 ]
-                            ],
-                        D.reflow $
+                            ]
+                      , D.reflow $
                           "This defines a `reviewPowerLevel` function that you can use elsewhere in your program."
                       ]
                   _ ->
@@ -1567,27 +1567,27 @@ toDeclStartReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "Declarations always start with a lower-case letter, so I am getting stuck here:",
-                D.stack
+                  "Declarations always start with a lower-case letter, so I am getting stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Try",
-                        "a",
-                        "name",
-                        "like",
-                        D.green (D.fromChars (Char.toLower c : cs)),
-                        "instead?"
-                      ],
-                    D.toSimpleNote $
-                      "Here are a couple valid declarations for reference:",
-                    D.indent 4 $
+                      [ "Try"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.green (D.fromChars (Char.toLower c : cs))
+                      , "instead?"
+                      ]
+                  , D.toSimpleNote $
+                      "Here are a couple valid declarations for reference:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ "greet : String -> String",
-                          "greet name =",
-                          "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\"",
-                          "",
-                          D.cyan "type" <> " User = Anonymous | LoggedIn String"
-                        ],
-                    D.reflow $
+                        [ "greet : String -> String"
+                        , "greet name ="
+                        , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                        , ""
+                        , D.cyan "type" <> " User = Anonymous | LoggedIn String"
+                        ]
+                  , D.reflow $
                       "Notice that they always start with a lower-case letter. Capitalization matters!"
                   ]
               )
@@ -1600,19 +1600,19 @@ toDeclStartReport source row col =
                   region
                   Nothing
                   ( D.reflow $
-                      "I am getting stuck because this line starts with the " ++ [char] ++ " symbol:",
-                    D.stack
+                      "I am getting stuck because this line starts with the " ++ [char] ++ " symbol:"
+                  , D.stack
                       [ D.reflow $
-                          "When a line has no spaces at the beginning, I expect it to be a declaration like one of these:",
-                        D.indent 4 $
+                          "When a line has no spaces at the beginning, I expect it to be a declaration like one of these:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\"",
-                              "",
-                              D.cyan "type" <> " User = Anonymous | LoggedIn String"
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            , ""
+                            , D.cyan "type" <> " User = Anonymous | LoggedIn String"
+                            ]
+                      , D.reflow $
                           "If this is not supposed to be a declaration, try adding some spaces before it?"
                       ]
                   )
@@ -1624,19 +1624,19 @@ toDeclStartReport source row col =
               region
               Nothing
               ( D.reflow $
-                  "I am trying to parse a declaration, but I am getting stuck here:",
-                D.stack
+                  "I am trying to parse a declaration, but I am getting stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "When a line has no spaces at the beginning, I expect it to be a declaration like one of these:",
-                    D.indent 4 $
+                      "When a line has no spaces at the beginning, I expect it to be a declaration like one of these:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ "greet : String -> String",
-                          "greet name =",
-                          "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\"",
-                          "",
-                          D.cyan "type" <> " User = Anonymous | LoggedIn String"
-                        ],
-                    D.reflow $
+                        [ "greet : String -> String"
+                        , "greet name ="
+                        , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                        , ""
+                        , D.cyan "type" <> " User = Anonymous | LoggedIn String"
+                        ]
+                  , D.reflow $
                       "Try to make your declaration look like one of those? Or if this is not\
                       \ supposed to be a declaration, try adding some spaces before it?"
                   ]
@@ -1660,8 +1660,8 @@ toPortReport source port_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I cannot handle ports with names like this:",
-                    D.reflow $
+                      "I cannot handle ports with names like this:"
+                  , D.reflow $
                       "You are trying to make a port named `"
                         ++ keyword
                         ++ "` but that is a reserved word. Try using some other name?"
@@ -1675,30 +1675,30 @@ toPortReport source port_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just saw the start of a `port` declaration, but then I got stuck here:",
-                    D.stack
+                      "I just saw the start of a `port` declaration, but then I got stuck here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "a",
-                            "name",
-                            "like",
-                            D.dullyellow "send",
-                            "or",
-                            D.dullyellow "receive",
-                            "next.",
-                            "Something",
-                            "that",
-                            "starts",
-                            "with",
-                            "a",
-                            "lower-case",
-                            "letter."
-                          ],
-                        portNote
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "a"
+                          , "name"
+                          , "like"
+                          , D.dullyellow "send"
+                          , "or"
+                          , D.dullyellow "receive"
+                          , "next."
+                          , "Something"
+                          , "that"
+                          , "starts"
+                          , "with"
+                          , "a"
+                          , "lower-case"
+                          , "letter."
+                          ]
+                      , portNote
                       ]
                   )
     PortColon row col ->
@@ -1710,12 +1710,12 @@ toPortReport source port_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the start of a `port` declaration, but then I got stuck here:",
-                D.stack
+                  "I just saw the start of a `port` declaration, but then I got stuck here:"
+              , D.stack
                   [ D.reflow $
                       "I was expecting to see a colon next. And then a type that tells me\
-                      \ what type of values are going to flow through.",
-                    portNote
+                      \ what type of values are going to flow through."
+                  , portNote
                   ]
               )
     PortType tipe row col ->
@@ -1729,30 +1729,30 @@ toPortReport source port_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the start of a `port` declaration, but then I got stuck here:",
-                D.stack
+                  "I just saw the start of a `port` declaration, but then I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "name",
-                        "like",
-                        D.dullyellow "send",
-                        "or",
-                        D.dullyellow "receive",
-                        "next.",
-                        "Something",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "lower-case",
-                        "letter."
-                      ],
-                    portNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.dullyellow "send"
+                      , "or"
+                      , D.dullyellow "receive"
+                      , "next."
+                      , "Something"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "lower-case"
+                      , "letter."
+                      ]
+                  , portNote
                   ]
               )
     PortIndentColon row col ->
@@ -1764,12 +1764,12 @@ toPortReport source port_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the start of a `port` declaration, but then I got stuck here:",
-                D.stack
+                  "I just saw the start of a `port` declaration, but then I got stuck here:"
+              , D.stack
                   [ D.reflow $
                       "I was expecting to see a colon next. And then a type that tells me\
-                      \ what type of values are going to flow through.",
-                    portNote
+                      \ what type of values are going to flow through."
+                  , portNote
                   ]
               )
     PortIndentType row col ->
@@ -1781,17 +1781,17 @@ toPortReport source port_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the start of a `port` declaration, but then I got stuck here:",
-                D.stack
+                  "I just saw the start of a `port` declaration, but then I got stuck here:"
+              , D.stack
                   [ D.reflow $
                       "I was expecting to see a type next. Here are examples of outgoing and\
-                      \ incoming ports for reference:",
-                    D.indent 4 $
+                      \ incoming ports for reference:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ D.fillSep [D.cyan "port", "send", ":", "String -> Cmd msg"],
-                          D.fillSep [D.cyan "port", "receive", ":", "(String -> msg) -> Sub msg"]
-                        ],
-                    D.reflow $
+                        [ D.fillSep [D.cyan "port", "send", ":", "String -> Cmd msg"]
+                        , D.fillSep [D.cyan "port", "receive", ":", "(String -> msg) -> Sub msg"]
+                        ]
+                  , D.reflow $
                       "The first line defines a `send` port so you can send strings out to JavaScript.\
                       \ Maybe you send them on a WebSocket or put them into IndexedDB. The second line\
                       \ defines a `receive` port so you can receive strings from JavaScript. Maybe you\
@@ -1804,13 +1804,13 @@ portNote :: D.Doc
 portNote =
   D.stack
     [ D.toSimpleNote $
-        "Here are some example `port` declarations for reference:",
-      D.indent 4 $
+        "Here are some example `port` declarations for reference:"
+    , D.indent 4 $
         D.vcat $
-          [ D.fillSep [D.cyan "port", "send", ":", "String -> Cmd msg"],
-            D.fillSep [D.cyan "port", "receive", ":", "(String -> msg) -> Sub msg"]
-          ],
-      D.reflow $
+          [ D.fillSep [D.cyan "port", "send", ":", "String -> Cmd msg"]
+          , D.fillSep [D.cyan "port", "receive", ":", "(String -> msg) -> Sub msg"]
+          ]
+    , D.reflow $
         "The first line defines a `send` port so you can send strings out to JavaScript.\
         \ Maybe you send them on a WebSocket or put them into IndexedDB. The second line\
         \ defines a `receive` port so you can receive strings from JavaScript. Maybe you\
@@ -1834,34 +1834,34 @@ toDeclTypeReport source declType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I think I am parsing a type declaration, but I got stuck here:",
-                D.stack
+                  "I think I am parsing a type declaration, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "name",
-                        "like",
-                        D.dullyellow "Status",
-                        "or",
-                        D.dullyellow "Style",
-                        "next.",
-                        "Just",
-                        "make",
-                        "sure",
-                        "it",
-                        "is",
-                        "a",
-                        "name",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "capital",
-                        "letter!"
-                      ],
-                    customTypeNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.dullyellow "Status"
+                      , "or"
+                      , D.dullyellow "Style"
+                      , "next."
+                      , "Just"
+                      , "make"
+                      , "sure"
+                      , "it"
+                      , "is"
+                      , "a"
+                      , "name"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "capital"
+                      , "letter!"
+                      ]
+                  , customTypeNote
                   ]
               )
     DT_Alias typeAlias row col ->
@@ -1877,34 +1877,34 @@ toDeclTypeReport source declType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I think I am parsing a type declaration, but I got stuck here:",
-                D.stack
+                  "I think I am parsing a type declaration, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "name",
-                        "like",
-                        D.dullyellow "Status",
-                        "or",
-                        D.dullyellow "Style",
-                        "next.",
-                        "Just",
-                        "make",
-                        "sure",
-                        "it",
-                        "is",
-                        "a",
-                        "name",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "capital",
-                        "letter!"
-                      ],
-                    customTypeNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.dullyellow "Status"
+                      , "or"
+                      , D.dullyellow "Style"
+                      , "next."
+                      , "Just"
+                      , "make"
+                      , "sure"
+                      , "it"
+                      , "is"
+                      , "a"
+                      , "name"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "capital"
+                      , "letter!"
+                      ]
+                  , customTypeNote
                   ]
               )
 
@@ -1922,34 +1922,34 @@ toTypeAliasReport source typeAlias startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a type alias, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a type alias, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "name",
-                        "like",
-                        D.dullyellow "Person",
-                        "or",
-                        D.dullyellow "Point",
-                        "next.",
-                        "Just",
-                        "make",
-                        "sure",
-                        "it",
-                        "is",
-                        "a",
-                        "name",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "capital",
-                        "letter!"
-                      ],
-                    typeAliasNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.dullyellow "Person"
+                      , "or"
+                      , D.dullyellow "Point"
+                      , "next."
+                      , "Just"
+                      , "make"
+                      , "sure"
+                      , "it"
+                      , "is"
+                      , "a"
+                      , "name"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "capital"
+                      , "letter!"
+                      ]
+                  , typeAliasNote
                   ]
               )
     AliasEquals row col ->
@@ -1963,13 +1963,13 @@ toTypeAliasReport source typeAlias startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I ran into a reserved word unexpectedly while parsing this type alias:",
-                    D.stack
+                      "I ran into a reserved word unexpectedly while parsing this type alias:"
+                  , D.stack
                       [ D.reflow $
                           "It looks like you are trying use `"
                             ++ keyword
-                            ++ "` as a type variable, but it is a reserved word. Try using a different name?",
-                        typeAliasNote
+                            ++ "` as a type variable, but it is a reserved word. Try using a different name?"
+                      , typeAliasNote
                       ]
                   )
         _ ->
@@ -1981,11 +1981,11 @@ toTypeAliasReport source typeAlias startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a type alias, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a type alias, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I was expecting to see a type variable or an equals sign next.",
-                        typeAliasNote
+                          "I was expecting to see a type variable or an equals sign next."
+                      , typeAliasNote
                       ]
                   )
     AliasBody tipe row col ->
@@ -1999,11 +1999,11 @@ toTypeAliasReport source typeAlias startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a type alias, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a type alias, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see a type variable or an equals sign next.",
-                    typeAliasNote
+                      "I was expecting to see a type variable or an equals sign next."
+                  , typeAliasNote
                   ]
               )
     AliasIndentBody row col ->
@@ -2015,28 +2015,28 @@ toTypeAliasReport source typeAlias startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a type alias, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a type alias, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "type",
-                        "next.",
-                        "Something",
-                        "as",
-                        "simple",
-                        "as",
-                        D.dullyellow "Int",
-                        "or",
-                        D.dullyellow "Float",
-                        "would",
-                        "work!"
-                      ],
-                    typeAliasNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "type"
+                      , "next."
+                      , "Something"
+                      , "as"
+                      , "simple"
+                      , "as"
+                      , D.dullyellow "Int"
+                      , "or"
+                      , D.dullyellow "Float"
+                      , "would"
+                      , "work!"
+                      ]
+                  , typeAliasNote
                   ]
               )
 
@@ -2044,18 +2044,18 @@ typeAliasNote :: D.Doc
 typeAliasNote =
   D.stack
     [ D.toSimpleNote $
-        "Here is an example of a valid `type alias` for reference:",
-      D.vcat $
-        [ D.indent 4 $ D.fillSep [D.cyan "type", D.cyan "alias", "Person", "="],
-          D.indent 6 $
+        "Here is an example of a valid `type alias` for reference:"
+    , D.vcat $
+        [ D.indent 4 $ D.fillSep [D.cyan "type", D.cyan "alias", "Person", "="]
+        , D.indent 6 $
             D.vcat $
-              [ "{ name : String",
-                ", age : Int",
-                ", height : Float",
-                "}"
+              [ "{ name : String"
+              , ", age : Int"
+              , ", height : Float"
+              , "}"
               ]
-        ],
-      D.reflow $
+        ]
+    , D.reflow $
         "This would let us use `Person` as a shorthand for that record type. Using this\
         \ shorthand makes type annotations much easier to read, and makes changing code\
         \ easier if you decide later that there is more to a person than age and height!"
@@ -2075,34 +2075,34 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I think I am parsing a type declaration, but I got stuck here:",
-                D.stack
+                  "I think I am parsing a type declaration, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "name",
-                        "like",
-                        D.dullyellow "Status",
-                        "or",
-                        D.dullyellow "Style",
-                        "next.",
-                        "Just",
-                        "make",
-                        "sure",
-                        "it",
-                        "is",
-                        "a",
-                        "name",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "capital",
-                        "letter!"
-                      ],
-                    customTypeNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "name"
+                      , "like"
+                      , D.dullyellow "Status"
+                      , "or"
+                      , D.dullyellow "Style"
+                      , "next."
+                      , "Just"
+                      , "make"
+                      , "sure"
+                      , "it"
+                      , "is"
+                      , "a"
+                      , "name"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "capital"
+                      , "letter!"
+                      ]
+                  , customTypeNote
                   ]
               )
     CT_Equals row col ->
@@ -2116,13 +2116,13 @@ toCustomTypeReport source customType startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I ran into a reserved word unexpectedly while parsing this custom type:",
-                    D.stack
+                      "I ran into a reserved word unexpectedly while parsing this custom type:"
+                  , D.stack
                       [ D.reflow $
                           "It looks like you are trying use `"
                             ++ keyword
-                            ++ "` as a type variable, but it is a reserved word. Try using a different name?",
-                        customTypeNote
+                            ++ "` as a type variable, but it is a reserved word. Try using a different name?"
+                      , customTypeNote
                       ]
                   )
         _ ->
@@ -2134,11 +2134,11 @@ toCustomTypeReport source customType startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a custom type, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a custom type, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I was expecting to see a type variable or an equals sign next.",
-                        customTypeNote
+                          "I was expecting to see a type variable or an equals sign next."
+                      , customTypeNote
                       ]
                   )
     CT_Bar row col ->
@@ -2150,11 +2150,11 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see a vertical bar like | next.",
-                    customTypeNote
+                      "I was expecting to see a vertical bar like | next."
+                  , customTypeNote
                   ]
               )
     CT_Variant row col ->
@@ -2166,34 +2166,34 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "variant",
-                        "name",
-                        "next.",
-                        "Something",
-                        "like",
-                        D.dullyellow "Success",
-                        "or",
-                        D.dullyellow "Sandwich" <> ".",
-                        "Any",
-                        "name",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "capital",
-                        "letter",
-                        "really!"
-                      ],
-                    customTypeNote
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "variant"
+                      , "name"
+                      , "next."
+                      , "Something"
+                      , "like"
+                      , D.dullyellow "Success"
+                      , "or"
+                      , D.dullyellow "Sandwich" <> "."
+                      , "Any"
+                      , "name"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "capital"
+                      , "letter"
+                      , "really!"
+                      ]
+                  , customTypeNote
                   ]
               )
     CT_VariantArg tipe row col ->
@@ -2207,11 +2207,11 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see a type variable or an equals sign next.",
-                    customTypeNote
+                      "I was expecting to see a type variable or an equals sign next."
+                  , customTypeNote
                   ]
               )
     CT_IndentBar row col ->
@@ -2223,11 +2223,11 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see a vertical bar like | next.",
-                    customTypeNote
+                      "I was expecting to see a vertical bar like | next."
+                  , customTypeNote
                   ]
               )
     CT_IndentAfterBar row col ->
@@ -2239,11 +2239,11 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I just saw a vertical bar, so I was expecting to see another variant defined next.",
-                    customTypeNote
+                      "I just saw a vertical bar, so I was expecting to see another variant defined next."
+                  , customTypeNote
                   ]
               )
     CT_IndentAfterEquals row col ->
@@ -2255,11 +2255,11 @@ toCustomTypeReport source customType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a custom type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a custom type, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I just saw an equals sign, so I was expecting to see the first variant defined next.",
-                    customTypeNote
+                      "I just saw an equals sign, so I was expecting to see the first variant defined next."
+                  , customTypeNote
                   ]
               )
 
@@ -2267,14 +2267,14 @@ customTypeNote :: D.Doc
 customTypeNote =
   D.stack
     [ D.toSimpleNote $
-        "Here is an example of a valid `type` declaration for reference:",
-      D.vcat $
-        [ D.indent 4 $ D.fillSep [D.cyan "type", "Status"],
-          D.indent 6 $ D.fillSep ["=", "Failure"],
-          D.indent 6 $ D.fillSep ["|", "Waiting"],
-          D.indent 6 $ D.fillSep ["|", "Success", "String"]
-        ],
-      D.reflow $
+        "Here is an example of a valid `type` declaration for reference:"
+    , D.vcat $
+        [ D.indent 4 $ D.fillSep [D.cyan "type", "Status"]
+        , D.indent 6 $ D.fillSep ["=", "Failure"]
+        , D.indent 6 $ D.fillSep ["|", "Waiting"]
+        , D.indent 6 $ D.fillSep ["|", "Success", "String"]
+        ]
+    , D.reflow $
         "This defines a new `Status` type with three variants. This could be useful if\
         \ we are waiting for an HTTP request. Maybe we start with `Waiting` and then\
         \ switch to `Failure` or `Success \"message from server\"` depending on how\
@@ -2300,52 +2300,52 @@ toDeclDefReport source name declDef startRow startCol =
                   surroundings
                   (Just region)
                   ( D.fillSep
-                      [ "The",
-                        "name",
-                        "`" <> D.cyan (D.fromChars keyword) <> "`",
-                        "is",
-                        "reserved",
-                        "in",
-                        "Gren,",
-                        "so",
-                        "it",
-                        "cannot",
-                        "be",
-                        "used",
-                        "as",
-                        "an",
-                        "argument",
-                        "here:"
-                      ],
-                    D.stack
+                      [ "The"
+                      , "name"
+                      , "`" <> D.cyan (D.fromChars keyword) <> "`"
+                      , "is"
+                      , "reserved"
+                      , "in"
+                      , "Gren,"
+                      , "so"
+                      , "it"
+                      , "cannot"
+                      , "be"
+                      , "used"
+                      , "as"
+                      , "an"
+                      , "argument"
+                      , "here:"
+                      ]
+                  , D.stack
                       [ D.reflow $
-                          "Try renaming it to something else.",
-                        case keyword of
+                          "Try renaming it to something else."
+                      , case keyword of
                           "as" ->
                             D.toFancyNote
-                              [ "This",
-                                "keyword",
-                                "is",
-                                "reserved",
-                                "for",
-                                "pattern",
-                                "matches",
-                                "like",
-                                "([x,y]",
-                                D.cyan "as",
-                                "point)",
-                                "where",
-                                "you",
-                                "want",
-                                "to",
-                                "name",
-                                "an",
-                                "array",
-                                "and",
-                                "the",
-                                "values",
-                                "it",
-                                "contains."
+                              [ "This"
+                              , "keyword"
+                              , "is"
+                              , "reserved"
+                              , "for"
+                              , "pattern"
+                              , "matches"
+                              , "like"
+                              , "([x,y]"
+                              , D.cyan "as"
+                              , "point)"
+                              , "where"
+                              , "you"
+                              , "want"
+                              , "to"
+                              , "name"
+                              , "an"
+                              , "array"
+                              , "and"
+                              , "the"
+                              , "values"
+                              , "it"
+                              , "contains."
                               ]
                           _ ->
                             D.toSimpleNote $
@@ -2361,45 +2361,45 @@ toDeclDefReport source name declDef startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was not expecting to see an arrow here:",
-                    D.stack
+                      "I was not expecting to see an arrow here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "This",
-                            "usually",
-                            "means",
-                            "a",
-                            D.green ":",
-                            "is",
-                            "missing",
-                            "a",
-                            "bit",
-                            "earlier",
-                            "in",
-                            "a",
-                            "type",
-                            "annotation.",
-                            "It",
-                            "could",
-                            "be",
-                            "something",
-                            "else",
-                            "though,",
-                            "so",
-                            "here",
-                            "is",
-                            "a",
-                            "valid",
-                            "definition",
-                            "for",
-                            "reference:"
-                          ],
-                        D.indent 4 $
+                          [ "This"
+                          , "usually"
+                          , "means"
+                          , "a"
+                          , D.green ":"
+                          , "is"
+                          , "missing"
+                          , "a"
+                          , "bit"
+                          , "earlier"
+                          , "in"
+                          , "a"
+                          , "type"
+                          , "annotation."
+                          , "It"
+                          , "could"
+                          , "be"
+                          , "something"
+                          , "else"
+                          , "though,"
+                          , "so"
+                          , "here"
+                          , "is"
+                          , "a"
+                          , "valid"
+                          , "definition"
+                          , "for"
+                          , "reference:"
+                          ]
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format with your `" ++ Name.toChars name ++ "` definition!"
                       ]
                   )
@@ -2412,18 +2412,18 @@ toDeclDefReport source name declDef startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was not expecting to see this symbol here:",
-                    D.stack
+                      "I was not expecting to see this symbol here:"
+                  , D.stack
                       [ D.reflow $
                           "I am not sure what is going wrong exactly, so here is a valid\
-                          \ definition (with an optional type annotation) for reference:",
-                        D.indent 4 $
+                          \ definition (with an optional type annotation) for reference:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format with your `" ++ Name.toChars name ++ "` definition!"
                       ]
                   )
@@ -2436,18 +2436,18 @@ toDeclDefReport source name declDef startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                    D.stack
+                      "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+                  , D.stack
                       [ D.reflow $
                           "I am not sure what is going wrong exactly, so here is a valid\
-                          \ definition (with an optional type annotation) for reference:",
-                        D.indent 4 $
+                          \ definition (with an optional type annotation) for reference:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format!"
                       ]
                   )
@@ -2468,12 +2468,12 @@ toDeclDefReport source name declDef startRow startCol =
               ( D.reflow $
                   "I just saw the type annotation for `"
                     ++ Name.toChars name
-                    ++ "` so I was expecting to see its definition here:",
-                D.stack
+                    ++ "` so I was expecting to see its definition here:"
+              , D.stack
                   [ D.reflow $
                       "Type annotations always appear directly above the relevant\
-                      \ definition, without anything else in between. (Not even doc comments!)",
-                    declDefNote
+                      \ definition, without anything else in between. (Not even doc comments!)"
+                  , declDefNote
                   ]
               )
     DeclDefNameMatch defName row col ->
@@ -2485,11 +2485,11 @@ toDeclDefReport source name declDef startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw a type annotation for `" ++ Name.toChars name ++ "`, but it is followed by a definition for `" ++ Name.toChars defName ++ "`:",
-                D.stack
+                  "I just saw a type annotation for `" ++ Name.toChars name ++ "`, but it is followed by a definition for `" ++ Name.toChars defName ++ "`:"
+              , D.stack
                   [ D.reflow $
-                      "These names do not match! Is there a typo?",
-                    D.indent 4 $
+                      "These names do not match! Is there a typo?"
+                  , D.indent 4 $
                       D.fillSep $
                         [D.dullyellow (D.fromName defName), "->", D.green (D.fromName name)]
                   ]
@@ -2503,11 +2503,11 @@ toDeclDefReport source name declDef startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` type annotation:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` type annotation:"
+              , D.stack
                   [ D.reflow $
-                      "I just saw a colon, so I am expecting to see a type next.",
-                    declDefNote
+                      "I just saw a colon, so I am expecting to see a type next."
+                  , declDefNote
                   ]
               )
     DeclDefIndentEquals row col ->
@@ -2519,11 +2519,11 @@ toDeclDefReport source name declDef startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an argument or an equals sign next.",
-                    declDefNote
+                      "I was expecting to see an argument or an equals sign next."
+                  , declDefNote
                   ]
               )
     DeclDefIndentBody row col ->
@@ -2535,11 +2535,11 @@ toDeclDefReport source name declDef startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an expression next. What is it equal to?",
-                    declDefNote
+                      "I was expecting to see an expression next. What is it equal to?"
+                  , declDefNote
                   ]
               )
 
@@ -2547,14 +2547,14 @@ declDefNote :: D.Doc
 declDefNote =
   D.stack
     [ D.reflow $
-        "Here is a valid definition (with a type annotation) for reference:",
-      D.indent 4 $
+        "Here is a valid definition (with a type annotation) for reference:"
+    , D.indent 4 $
         D.vcat $
-          [ "greet : String -> String",
-            "greet name =",
-            "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-          ],
-      D.reflow $
+          [ "greet : String -> String"
+          , "greet name ="
+          , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+          ]
+    , D.reflow $
         "The top line (called a \"type annotation\") is optional. You can leave it off\
         \ if you want. As you get more comfortable with Gren and as your project grows,\
         \ it becomes more and more valuable to add them though! They work great as\
@@ -2623,20 +2623,20 @@ toExprReport source context expr startRow startCol =
               region
               Nothing
               ( D.reflow $
-                  "I was expecting to see a record accessor here:",
-                D.fillSep
-                  [ "Something",
-                    "like",
-                    D.dullyellow ".name",
-                    "or",
-                    D.dullyellow ".price",
-                    "that",
-                    "accesses",
-                    "a",
-                    "value",
-                    "from",
-                    "a",
-                    "record."
+                  "I was expecting to see a record accessor here:"
+              , D.fillSep
+                  [ "Something"
+                  , "like"
+                  , D.dullyellow ".name"
+                  , "or"
+                  , D.dullyellow ".price"
+                  , "that"
+                  , "accesses"
+                  , "a"
+                  , "value"
+                  , "from"
+                  , "a"
+                  , "record."
                   ]
               )
     Access row col ->
@@ -2647,23 +2647,23 @@ toExprReport source context expr startRow startCol =
               region
               Nothing
               ( D.reflow $
-                  "I am trying to parse a record accessor here:",
-                D.stack
+                  "I am trying to parse a record accessor here:"
+              , D.stack
                   [ D.fillSep
-                      [ "Something",
-                        "like",
-                        D.dullyellow ".name",
-                        "or",
-                        D.dullyellow ".price",
-                        "that",
-                        "accesses",
-                        "a",
-                        "value",
-                        "from",
-                        "a",
-                        "record."
-                      ],
-                    D.toSimpleNote $
+                      [ "Something"
+                      , "like"
+                      , D.dullyellow ".name"
+                      , "or"
+                      , D.dullyellow ".price"
+                      , "that"
+                      , "accesses"
+                      , "a"
+                      , "value"
+                      , "from"
+                      , "a"
+                      , "record."
+                      ]
+                  , D.toSimpleNote $
                       "Record field names must start with a lower case letter!"
                   ]
               )
@@ -2681,54 +2681,54 @@ toExprReport source context expr startRow startCol =
                     ++ Name.toChars op
                     ++ " "
                     ++ (if isMath then "sign" else "operator")
-                    ++ ", so I am getting stuck here:",
-                if isMath
+                    ++ ", so I am getting stuck here:"
+              , if isMath
                   then
                     D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "an",
-                        "expression",
-                        "next.",
-                        "Something",
-                        "like",
-                        D.dullyellow "42",
-                        "or",
-                        D.dullyellow "1000",
-                        "that",
-                        "makes",
-                        "sense",
-                        "with",
-                        "a",
-                        D.fromName op,
-                        "sign."
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "an"
+                      , "expression"
+                      , "next."
+                      , "Something"
+                      , "like"
+                      , D.dullyellow "42"
+                      , "or"
+                      , D.dullyellow "1000"
+                      , "that"
+                      , "makes"
+                      , "sense"
+                      , "with"
+                      , "a"
+                      , D.fromName op
+                      , "sign."
                       ]
                   else
                     if op == "&&" || op == "||"
                       then
                         D.fillSep
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "an",
-                            "expression",
-                            "next.",
-                            "Something",
-                            "like",
-                            D.dullyellow "True",
-                            "or",
-                            D.dullyellow "False",
-                            "that",
-                            "makes",
-                            "sense",
-                            "with",
-                            "boolean",
-                            "logic."
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "an"
+                          , "expression"
+                          , "next."
+                          , "Something"
+                          , "like"
+                          , D.dullyellow "True"
+                          , "or"
+                          , D.dullyellow "False"
+                          , "that"
+                          , "makes"
+                          , "sense"
+                          , "with"
+                          , "boolean"
+                          , "logic."
                           ]
                       else
                         if op == "|>"
@@ -2769,35 +2769,35 @@ toExprReport source context expr startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing " ++ aThing ++ ", but I got stuck here:",
-                D.stack
+                  "I am partway through parsing " ++ aThing ++ ", but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "an",
-                        "expression",
-                        "like",
-                        D.dullyellow "42",
-                        "or",
-                        D.dullyellow "\"hello\"" <> ".",
-                        "Once",
-                        "there",
-                        "is",
-                        "something",
-                        "there,",
-                        "I",
-                        "can",
-                        "probably",
-                        "give",
-                        "a",
-                        "more",
-                        "specific",
-                        "hint!"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "an"
+                      , "expression"
+                      , "like"
+                      , D.dullyellow "42"
+                      , "or"
+                      , D.dullyellow "\"hello\"" <> "."
+                      , "Once"
+                      , "there"
+                      , "is"
+                      , "something"
+                      , "there,"
+                      , "I"
+                      , "can"
+                      , "probably"
+                      , "give"
+                      , "a"
+                      , "more"
+                      , "specific"
+                      , "hint!"
+                      ]
+                  , D.toSimpleNote $
                       "This can also happen if I run into reserved words like `let` or `as` unexpectedly.\
                       \ Or if I run into operators in unexpected spots. Point is, there are a\
                       \ couple ways I can get confused and give sort of weird advice!"
@@ -2821,8 +2821,8 @@ toExprReport source context expr startRow startCol =
                     ++ Name.toChars name
                     ++ ") in an expression. Such variable names can appear in patterns but not expressions.\
                        \ A pattern consisting of a variable name prefixed by an underscore is equivalent to using\
-                       \ a single '_' pattern and is allowed so that you may name what you are ignoring.",
-                D.reflow $
+                       \ a single '_' pattern and is allowed so that you may name what you are ignoring."
+              , D.reflow $
                   "Perhaps rename the variable without the underscore prefix."
               )
     Space space row col ->
@@ -2836,35 +2836,35 @@ toExprReport source context expr startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see an expression after this " ++ Name.toChars op ++ " operator:",
-                D.stack
+                  "I was expecting to see an expression after this " ++ Name.toChars op ++ " operator:"
+              , D.stack
                   [ D.fillSep $
-                      [ "You",
-                        "can",
-                        "just",
-                        "put",
-                        "anything",
-                        "for",
-                        "now,",
-                        "like",
-                        D.dullyellow "42",
-                        "or",
-                        D.dullyellow "\"hello\"" <> ".",
-                        "Once",
-                        "there",
-                        "is",
-                        "something",
-                        "there,",
-                        "I",
-                        "can",
-                        "probably",
-                        "give",
-                        "a",
-                        "more",
-                        "specific",
-                        "hint!"
-                      ],
-                    D.toSimpleNote $
+                      [ "You"
+                      , "can"
+                      , "just"
+                      , "put"
+                      , "anything"
+                      , "for"
+                      , "now,"
+                      , "like"
+                      , D.dullyellow "42"
+                      , "or"
+                      , D.dullyellow "\"hello\"" <> "."
+                      , "Once"
+                      , "there"
+                      , "is"
+                      , "something"
+                      , "there,"
+                      , "I"
+                      , "can"
+                      , "probably"
+                      , "give"
+                      , "a"
+                      , "more"
+                      , "specific"
+                      , "hint!"
+                      ]
+                  , D.toSimpleNote $
                       "I may be getting confused by your indentation? The easiest way to make sure\
                       \ this is not an indentation problem is to put the expression on the right of\
                       \ the "
@@ -2887,8 +2887,8 @@ toCharReport source char row col =
               Nothing
               ( D.reflow $
                   "I thought I was parsing a character, but I got to the end of\
-                  \ the line without seeing the closing single quote:",
-                D.reflow $
+                  \ the line without seeing the closing single quote:"
+              , D.reflow $
                   "Add a closing single quote here!"
               )
     CharEscape escape ->
@@ -2900,12 +2900,12 @@ toCharReport source char row col =
               source
               region
               Nothing
-              ( "The following string uses single quotes:",
-                D.stack
-                  [ "Please switch to double quotes instead:",
-                    D.indent 4 $
-                      D.dullyellow "'this'" <> " => " <> D.green "\"this\"",
-                    D.toSimpleNote $
+              ( "The following string uses single quotes:"
+              , D.stack
+                  [ "Please switch to double quotes instead:"
+                  , D.indent 4 $
+                      D.dullyellow "'this'" <> " => " <> D.green "\"this\""
+                  , D.toSimpleNote $
                       "Gren uses double quotes for strings like \"hello\", whereas it uses single\
                       \ quotes for individual characters like 'a' and 'ø'. This distinction helps with\
                       \ code like (String.any (\\c -> c == 'X') \"90210\") where you are inspecting\
@@ -2926,33 +2926,33 @@ toStringReport source string row col =
               region
               Nothing
               ( D.reflow $
-                  "I got to the end of the line without seeing the closing double quote:",
-                D.stack
+                  "I got to the end of the line without seeing the closing double quote:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Strings",
-                        "look",
-                        "like",
-                        D.green "\"this\"",
-                        "with",
-                        "double",
-                        "quotes",
-                        "on",
-                        "each",
-                        "end.",
-                        "Is",
-                        "the",
-                        "closing",
-                        "double",
-                        "quote",
-                        "missing",
-                        "in",
-                        "your",
-                        "code?"
-                      ],
-                    D.toSimpleNote $
+                      [ "Strings"
+                      , "look"
+                      , "like"
+                      , D.green "\"this\""
+                      , "with"
+                      , "double"
+                      , "quotes"
+                      , "on"
+                      , "each"
+                      , "end."
+                      , "Is"
+                      , "the"
+                      , "closing"
+                      , "double"
+                      , "quote"
+                      , "missing"
+                      , "in"
+                      , "your"
+                      , "code?"
+                      ]
+                  , D.toSimpleNote $
                       "For a string that spans multiple lines, you can use the multi-line string\
-                      \ syntax like this:",
-                    D.dullyellow $ D.indent 3 validMultilineStringExample
+                      \ syntax like this:"
+                  , D.dullyellow $ D.indent 3 validMultilineStringExample
                   ]
               )
     StringEndless_Multi ->
@@ -2963,12 +2963,12 @@ toStringReport source string row col =
               region
               Nothing
               ( D.reflow $
-                  "I cannot find the end of this multi-line string:",
-                D.stack
-                  [ D.reflow "Add a \"\"\" somewhere after this to end the string.",
-                    D.toSimpleNote $
-                      "Here is a valid multi-line string for reference:",
-                    D.dullyellow $ D.indent 4 validMultilineStringExample
+                  "I cannot find the end of this multi-line string:"
+              , D.stack
+                  [ D.reflow "Add a \"\"\" somewhere after this to end the string."
+                  , D.toSimpleNote $
+                      "Here is a valid multi-line string for reference:"
+                  , D.dullyellow $ D.indent 4 validMultilineStringExample
                   ]
               )
     StringEscape escape ->
@@ -2980,25 +2980,25 @@ toStringReport source string row col =
               source
               region
               Nothing
-              ( D.reflow "The contents of a multiline sting must start on a new line",
-                D.stack
-                  [ D.reflow "Add a \"\"\" a new line right after the opening quotes.",
-                    D.toSimpleNote "Here is a valid multi-line string for reference:",
-                    D.dullyellow $ D.indent 4 validMultilineStringExample
+              ( D.reflow "The contents of a multiline sting must start on a new line"
+              , D.stack
+                  [ D.reflow "Add a \"\"\" a new line right after the opening quotes."
+                  , D.toSimpleNote "Here is a valid multi-line string for reference:"
+                  , D.dullyellow $ D.indent 4 validMultilineStringExample
                   ]
               )
 
 validMultilineStringExample :: D.Doc
 validMultilineStringExample =
   D.vcat
-    [ "\"\"\"",
-      "# Multi-line Strings",
-      "",
-      "- start with triple double quotes",
-      "- write whatever you want",
-      "- no need to escape newlines or double quotes",
-      "- end with triple double quotes",
-      "\"\"\""
+    [ "\"\"\""
+    , "# Multi-line Strings"
+    , ""
+    , "- start with triple double quotes"
+    , "- write whatever you want"
+    , "- no need to escape newlines or double quotes"
+    , "- end with triple double quotes"
+    , "\"\"\""
     ]
 
 -- ESCAPES
@@ -3014,24 +3014,24 @@ toEscapeReport source escape row col =
               region
               Nothing
               ( D.reflow $
-                  "Backslashes always start escaped characters, but I do not recognize this one:",
-                D.stack
+                  "Backslashes always start escaped characters, but I do not recognize this one:"
+              , D.stack
                   [ D.reflow $
-                      "Valid escape characters include:",
-                    D.dullyellow $
+                      "Valid escape characters include:"
+                  , D.dullyellow $
                       D.indent 4 $
                         D.vcat $
-                          [ "\\n",
-                            "\\r",
-                            "\\t",
-                            "\\\"",
-                            "\\\'",
-                            "\\\\",
-                            "\\u{003D}"
-                          ],
-                    D.reflow $
-                      "Do you want one of those instead? Maybe you need \\\\ to escape a backslash?",
-                    D.toSimpleNote $
+                          [ "\\n"
+                          , "\\r"
+                          , "\\t"
+                          , "\\\""
+                          , "\\\'"
+                          , "\\\\"
+                          , "\\u{003D}"
+                          ]
+                  , D.reflow $
+                      "Do you want one of those instead? Maybe you need \\\\ to escape a backslash?"
+                  , D.toSimpleNote $
                       "The last style lets encode ANY character by its Unicode code\
                       \ point. That means \\u{0009} and \\t are the same. You can use\
                       \ that style for anything not covered by the other six escapes!"
@@ -3045,19 +3045,19 @@ toEscapeReport source escape row col =
               region
               Nothing
               ( D.reflow $
-                  "I ran into an invalid Unicode escape:",
-                D.stack
+                  "I ran into an invalid Unicode escape:"
+              , D.stack
                   [ D.reflow $
-                      "Here are some examples of valid Unicode escapes:",
-                    D.dullyellow $
+                      "Here are some examples of valid Unicode escapes:"
+                  , D.dullyellow $
                       D.indent 4 $
                         D.vcat $
-                          [ "\\u{0041}",
-                            "\\u{03BB}",
-                            "\\u{6728}",
-                            "\\u{1F60A}"
-                          ],
-                    D.reflow $
+                          [ "\\u{0041}"
+                          , "\\u{03BB}"
+                          , "\\u{6728}"
+                          , "\\u{1F60A}"
+                          ]
+                  , D.reflow $
                       "Notice that the code point is always surrounded by curly braces.\
                       \ Maybe you are missing the opening or closing curly brace?"
                   ]
@@ -3070,8 +3070,8 @@ toEscapeReport source escape row col =
               region
               Nothing
               ( D.reflow $
-                  "This is not a valid code point:",
-                D.reflow $
+                  "This is not a valid code point:"
+              , D.reflow $
                   "The valid code points are between 0 and 10FFFF inclusive."
               )
     BadUnicodeLength width numDigits badCode ->
@@ -3081,37 +3081,37 @@ toEscapeReport source escape row col =
               if numDigits < 4
                 then
                   ( D.reflow $
-                      "Every code point needs at least four digits:",
-                    let goodCode = replicate (4 - numDigits) '0' ++ map Char.toUpper (showHex badCode "")
+                      "Every code point needs at least four digits:"
+                  , let goodCode = replicate (4 - numDigits) '0' ++ map Char.toUpper (showHex badCode "")
                         suggestion = "\\u{" <> D.fromChars goodCode <> "}"
                      in D.fillSep ["Try", D.green suggestion, "instead?"]
                   )
                 else
                   ( D.reflow $
-                      "This code point has too many digits:",
-                    D.fillSep $
-                      [ "Valid",
-                        "code",
-                        "points",
-                        "are",
-                        "between",
-                        D.green "\\u{0000}",
-                        "and",
-                        D.green "\\u{10FFFF}" <> ",",
-                        "so",
-                        "try",
-                        "trimming",
-                        "any",
-                        "leading",
-                        "zeros",
-                        "until",
-                        "you",
-                        "have",
-                        "between",
-                        "four",
-                        "and",
-                        "six",
-                        "digits."
+                      "This code point has too many digits:"
+                  , D.fillSep $
+                      [ "Valid"
+                      , "code"
+                      , "points"
+                      , "are"
+                      , "between"
+                      , D.green "\\u{0000}"
+                      , "and"
+                      , D.green "\\u{10FFFF}" <> ","
+                      , "so"
+                      , "try"
+                      , "trimming"
+                      , "any"
+                      , "leading"
+                      , "zeros"
+                      , "until"
+                      , "you"
+                      , "have"
+                      , "between"
+                      , "four"
+                      , "and"
+                      , "six"
+                      , "digits."
                       ]
                   )
 
@@ -3128,12 +3128,12 @@ toNumberReport source number row col =
               region
               Nothing
               ( D.reflow $
-                  "I thought I was reading a number, but I ran into some weird stuff here:",
-                D.stack
+                  "I thought I was reading a number, but I ran into some weird stuff here:"
+              , D.stack
                   [ D.reflow $
-                      "I recognize numbers in the following formats:",
-                    D.indent 4 $ D.vcat ["42", "3.14", "6.022e23", "0x002B"],
-                    D.reflow $
+                      "I recognize numbers in the following formats:"
+                  , D.indent 4 $ D.vcat ["42", "3.14", "6.022e23", "0x002B"]
+                  , D.reflow $
                       "So is there a way to write it like one of those?"
                   ]
               )
@@ -3144,16 +3144,16 @@ toNumberReport source number row col =
               region
               Nothing
               ( D.reflow $
-                  "Numbers cannot end with a dot like this:",
-                D.fillSep
-                  [ "Switching",
-                    "to",
-                    D.green (D.fromChars (show int)),
-                    "or",
-                    D.green (D.fromChars (show int ++ ".0")),
-                    "will",
-                    "work",
-                    "though!"
+                  "Numbers cannot end with a dot like this:"
+              , D.fillSep
+                  [ "Switching"
+                  , "to"
+                  , D.green (D.fromChars (show int))
+                  , "or"
+                  , D.green (D.fromChars (show int ++ ".0"))
+                  , "will"
+                  , "work"
+                  , "though!"
                   ]
               )
         NumberHexDigit ->
@@ -3163,12 +3163,12 @@ toNumberReport source number row col =
               region
               Nothing
               ( D.reflow $
-                  "I thought I was reading a hexidecimal number until I got here:",
-                D.stack
+                  "I thought I was reading a hexidecimal number until I got here:"
+              , D.stack
                   [ D.reflow $
                       "Valid hexidecimal digits include 0123456789abcdefABCDEF, so I can\
-                      \ only recognize things like this:",
-                    D.indent 4 $ D.vcat ["0x2B", "0x002B", "0x00ffb3"]
+                      \ only recognize things like this:"
+                  , D.indent 4 $ D.vcat ["0x2B", "0x002B", "0x00ffb3"]
                   ]
               )
         NumberNoLeadingZero ->
@@ -3178,11 +3178,11 @@ toNumberReport source number row col =
               region
               Nothing
               ( D.reflow $
-                  "I do not accept numbers with leading zeros:",
-                D.stack
+                  "I do not accept numbers with leading zeros:"
+              , D.stack
                   [ D.reflow $
-                      "Just delete the leading zeros and it should work!",
-                    D.toSimpleNote $
+                      "Just delete the leading zeros and it should work!"
+                  , D.toSimpleNote $
                       "Some languages let you to specify octal numbers by adding a leading zero.\
                       \ So in C, writing 0111 is the same as writing 73. Some people are used to\
                       \ that, but others probably want it to equal 111. Either path is going to\
@@ -3203,8 +3203,8 @@ toOperatorReport source context operator row col =
               source
               region
               Nothing
-              ( "I was not expecting this dot:",
-                D.reflow $
+              ( "I was not expecting this dot:"
+              , D.reflow $
                   "Dots are for record access and decimal points, so\
                   \ they cannot float around on their own. Maybe\
                   \ there is some extra whitespace?"
@@ -3217,8 +3217,8 @@ toOperatorReport source context operator row col =
               region
               Nothing
               ( D.reflow $
-                  "I was not expecting this vertical bar:",
-                D.reflow $
+                  "I was not expecting this vertical bar:"
+              , D.reflow $
                   "Vertical bars should only appear in custom type declarations. Maybe you want || instead?"
               )
     BadArrow ->
@@ -3228,30 +3228,30 @@ toOperatorReport source context operator row col =
               if isWithin NCase context
                 then
                   ( D.reflow $
-                      "I am parsing a `case` expression right now, but this arrow is confusing me:",
-                    D.stack
-                      [ D.reflow "Maybe the `of` keyword is missing on a previous line?",
-                        noteForCaseError
+                      "I am parsing a `case` expression right now, but this arrow is confusing me:"
+                  , D.stack
+                      [ D.reflow "Maybe the `of` keyword is missing on a previous line?"
+                      , noteForCaseError
                       ]
                   )
                 else
                   if isWithin NBranch context
                     then
                       ( D.reflow $
-                          "I am parsing a `case` expression right now, but this arrow is confusing me:",
-                        D.stack
+                          "I am parsing a `case` expression right now, but this arrow is confusing me:"
+                      , D.stack
                           [ D.reflow $
-                              "It makes sense to see arrows around here, so I suspect it is something earlier. Maybe this pattern is indented a bit farther than the previous patterns?",
-                            noteForCaseIndentError
+                              "It makes sense to see arrows around here, so I suspect it is something earlier. Maybe this pattern is indented a bit farther than the previous patterns?"
+                          , noteForCaseIndentError
                           ]
                       )
                     else
                       ( D.reflow $
-                          "I was partway through parsing an expression when I got stuck on this arrow:",
-                        D.stack
+                          "I was partway through parsing an expression when I got stuck on this arrow:"
+                      , D.stack
                           [ "Arrows should only appear in `case` expressions and anonymous functions.\n\
-                            \Maybe it was supposed to be a > sign instead?",
-                            D.toSimpleNote $
+                            \Maybe it was supposed to be a > sign instead?"
+                          , D.toSimpleNote $
                               "The syntax for anonymous functions is (\\x -> x + 1) so the arguments all appear\
                               \ after the backslash and before the arrow. Maybe a backslash is missing earlier?"
                           ]
@@ -3264,10 +3264,10 @@ toOperatorReport source context operator row col =
               region
               Nothing
               ( D.reflow $
-                  "I was not expecting to see this equals sign:",
-                D.stack
-                  [ D.reflow "Maybe you want == instead? To check if two values are equal?",
-                    D.toSimpleNote $
+                  "I was not expecting to see this equals sign:"
+              , D.stack
+                  [ D.reflow "Maybe you want == instead? To check if two values are equal?"
+                  , D.toSimpleNote $
                       if isWithin NRecord context
                         then
                           "Records look like { x = 3, y = 4 } with the equals sign right\
@@ -3291,8 +3291,8 @@ toOperatorReport source context operator row col =
        in Report.Report "UNEXPECTED SYMBOL" region [] $
             Code.toSnippet source region Nothing $
               ( D.reflow $
-                  "I was not expecting to run into the \"has type\" symbol here:",
-                case getDefName context of
+                  "I was not expecting to run into the \"has type\" symbol here:"
+              , case getDefName context of
                   Nothing ->
                     D.fillSep
                       [D.toSimpleNote "The single colon is reserved for type annotation and record types."]
@@ -3302,8 +3302,8 @@ toOperatorReport source context operator row col =
                           "The single colon is reserved for type annotations and record types, but I think\
                           \ I am parsing the definition of `"
                             ++ Name.toChars name
-                            ++ "` right now.",
-                        D.toSimpleNote $
+                            ++ "` right now."
+                      , D.toSimpleNote $
                           "I may be getting confused by your indentation. Is this supposed to be part of\
                           \ a type annotation AFTER the `"
                             ++ Name.toChars name
@@ -3330,28 +3330,28 @@ toLetReport source context let_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing a `let` expression, but I got stuck here:",
-                D.stack
+                  "I was partway through parsing a `let` expression, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Based",
-                        "on",
-                        "the",
-                        "indentation,",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "the",
-                        D.cyan "in",
-                        "keyword",
-                        "next.",
-                        "Is",
-                        "there",
-                        "a",
-                        "typo?"
-                      ],
-                    D.toSimpleNote $
+                      [ "Based"
+                      , "on"
+                      , "the"
+                      , "indentation,"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "the"
+                      , D.cyan "in"
+                      , "keyword"
+                      , "next."
+                      , "Is"
+                      , "there"
+                      , "a"
+                      , "typo?"
+                      ]
+                  , D.toSimpleNote $
                       "This can also happen if you are trying to define another value within the `let` but\
                       \ it is not indented enough. Make sure each definition has exactly the same amount of\
                       \ spaces before it. They should line up exactly!"
@@ -3366,28 +3366,28 @@ toLetReport source context let_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing a `let` expression, but I got stuck here:",
-                D.stack
+                  "I was partway through parsing a `let` expression, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Based",
-                        "on",
-                        "the",
-                        "indentation,",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "the",
-                        D.cyan "in",
-                        "keyword",
-                        "next.",
-                        "Is",
-                        "there",
-                        "a",
-                        "typo?"
-                      ],
-                    D.toSimpleNote $
+                      [ "Based"
+                      , "on"
+                      , "the"
+                      , "indentation,"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "the"
+                      , D.cyan "in"
+                      , "keyword"
+                      , "next."
+                      , "Is"
+                      , "there"
+                      , "a"
+                      , "typo?"
+                      ]
+                  , D.toSimpleNote $
                       "This can also happen if you are trying to define another value within the `let` but\
                       \ it is not indented enough. Make sure each definition has exactly the same amount of\
                       \ spaces before it. They should line up exactly!"
@@ -3404,8 +3404,8 @@ toLetReport source context let_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing a `let` expression, but I got stuck here:",
-                    D.reflow $
+                      "I was partway through parsing a `let` expression, but I got stuck here:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a variable name, but\
@@ -3428,21 +3428,21 @@ toLetReport source context let_ startRow startCol =
     LetIndentIn row col ->
       toUnfinishLetReport source row col startRow startCol $
         D.fillSep $
-          [ "I",
-            "was",
-            "expecting",
-            "to",
-            "see",
-            "the",
-            D.cyan "in",
-            "keyword",
-            "next.",
-            "Or",
-            "maybe",
-            "more",
-            "of",
-            "that",
-            "expression?"
+          [ "I"
+          , "was"
+          , "expecting"
+          , "to"
+          , "see"
+          , "the"
+          , D.cyan "in"
+          , "keyword"
+          , "next."
+          , "Or"
+          , "maybe"
+          , "more"
+          , "of"
+          , "that"
+          , "expression?"
           ]
     LetIndentBody row col ->
       toUnfinishLetReport source row col startRow startCol $
@@ -3459,21 +3459,21 @@ toUnfinishLetReport source row col startRow startCol message =
           surroundings
           (Just region)
           ( D.reflow $
-              "I was partway through parsing a `let` expression, but I got stuck here:",
-            D.stack
-              [ message,
-                D.toSimpleNote $
-                  "Here is an example with a valid `let` expression for reference:",
-                D.indent 4 $
+              "I was partway through parsing a `let` expression, but I got stuck here:"
+          , D.stack
+              [ message
+              , D.toSimpleNote $
+                  "Here is an example with a valid `let` expression for reference:"
+              , D.indent 4 $
                   D.vcat $
-                    [ D.indent 0 $ D.fillSep ["viewPerson", "person", "="],
-                      D.indent 2 $ D.fillSep [D.cyan "let"],
-                      D.indent 4 $ D.fillSep ["fullName", "="],
-                      D.indent 6 $ D.fillSep ["person.firstName", "++", D.dullyellow "\" \"", "++", "person.lastName"],
-                      D.indent 2 $ D.fillSep [D.cyan "in"],
-                      D.indent 2 $ D.fillSep ["div", "[]", "[", "text", "fullName", "]"]
-                    ],
-                D.reflow $
+                    [ D.indent 0 $ D.fillSep ["viewPerson", "person", "="]
+                    , D.indent 2 $ D.fillSep [D.cyan "let"]
+                    , D.indent 4 $ D.fillSep ["fullName", "="]
+                    , D.indent 6 $ D.fillSep ["person.firstName", "++", D.dullyellow "\" \"", "++", "person.lastName"]
+                    , D.indent 2 $ D.fillSep [D.cyan "in"]
+                    , D.indent 2 $ D.fillSep ["div", "[]", "[", "text", "fullName", "]"]
+                    ]
+              , D.reflow $
                   "Here we defined a `viewPerson` function that turns a person into some HTML. We use\
                   \ a `let` expression to define the `fullName` we want to show. Notice the indentation! The\
                   \ `fullName` is indented more than the `let` keyword, and the actual value of `fullName` is\
@@ -3499,12 +3499,12 @@ toLetDefReport source name def startRow startCol =
               ( D.reflow $
                   "I just saw the type annotation for `"
                     ++ Name.toChars name
-                    ++ "` so I was expecting to see its definition here:",
-                D.stack
+                    ++ "` so I was expecting to see its definition here:"
+              , D.stack
                   [ D.reflow $
                       "Type annotations always appear directly above the relevant\
-                      \ definition, without anything else in between.",
-                    defNote
+                      \ definition, without anything else in between."
+                  , defNote
                   ]
               )
     DefNameMatch defName row col ->
@@ -3516,11 +3516,11 @@ toLetDefReport source name def startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw a type annotation for `" ++ Name.toChars name ++ "`, but it is followed by a definition for `" ++ Name.toChars defName ++ "`:",
-                D.stack
+                  "I just saw a type annotation for `" ++ Name.toChars name ++ "`, but it is followed by a definition for `" ++ Name.toChars defName ++ "`:"
+              , D.stack
                   [ D.reflow $
-                      "These names do not match! Is there a typo?",
-                    D.indent 4 $
+                      "These names do not match! Is there a typo?"
+                  , D.indent 4 $
                       D.fillSep $
                         [D.dullyellow (D.fromName defName), "->", D.green (D.fromName name)]
                   ]
@@ -3538,52 +3538,52 @@ toLetDefReport source name def startRow startCol =
                   surroundings
                   (Just region)
                   ( D.fillSep
-                      [ "The",
-                        "name",
-                        "`" <> D.cyan (D.fromChars keyword) <> "`",
-                        "is",
-                        "reserved",
-                        "in",
-                        "Gren,",
-                        "so",
-                        "it",
-                        "cannot",
-                        "be",
-                        "used",
-                        "as",
-                        "an",
-                        "argument",
-                        "here:"
-                      ],
-                    D.stack
+                      [ "The"
+                      , "name"
+                      , "`" <> D.cyan (D.fromChars keyword) <> "`"
+                      , "is"
+                      , "reserved"
+                      , "in"
+                      , "Gren,"
+                      , "so"
+                      , "it"
+                      , "cannot"
+                      , "be"
+                      , "used"
+                      , "as"
+                      , "an"
+                      , "argument"
+                      , "here:"
+                      ]
+                  , D.stack
                       [ D.reflow $
-                          "Try renaming it to something else.",
-                        case keyword of
+                          "Try renaming it to something else."
+                      , case keyword of
                           "as" ->
                             D.toFancyNote
-                              [ "This",
-                                "keyword",
-                                "is",
-                                "reserved",
-                                "for",
-                                "pattern",
-                                "matches",
-                                "like",
-                                "([x,y]",
-                                D.cyan "as",
-                                "point)",
-                                "where",
-                                "you",
-                                "want",
-                                "to",
-                                "name",
-                                "an",
-                                "array",
-                                "and",
-                                "the",
-                                "values",
-                                "it",
-                                "contains."
+                              [ "This"
+                              , "keyword"
+                              , "is"
+                              , "reserved"
+                              , "for"
+                              , "pattern"
+                              , "matches"
+                              , "like"
+                              , "([x,y]"
+                              , D.cyan "as"
+                              , "point)"
+                              , "where"
+                              , "you"
+                              , "want"
+                              , "to"
+                              , "name"
+                              , "an"
+                              , "array"
+                              , "and"
+                              , "the"
+                              , "values"
+                              , "it"
+                              , "contains."
                               ]
                           _ ->
                             D.toSimpleNote $
@@ -3599,45 +3599,45 @@ toLetDefReport source name def startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was not expecting to see an arrow here:",
-                    D.stack
+                      "I was not expecting to see an arrow here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "This",
-                            "usually",
-                            "means",
-                            "a",
-                            D.green ":",
-                            "is",
-                            "missing",
-                            "a",
-                            "bit",
-                            "earlier",
-                            "in",
-                            "a",
-                            "type",
-                            "annotation.",
-                            "It",
-                            "could",
-                            "be",
-                            "something",
-                            "else",
-                            "though,",
-                            "so",
-                            "here",
-                            "is",
-                            "a",
-                            "valid",
-                            "definition",
-                            "for",
-                            "reference:"
-                          ],
-                        D.indent 4 $
+                          [ "This"
+                          , "usually"
+                          , "means"
+                          , "a"
+                          , D.green ":"
+                          , "is"
+                          , "missing"
+                          , "a"
+                          , "bit"
+                          , "earlier"
+                          , "in"
+                          , "a"
+                          , "type"
+                          , "annotation."
+                          , "It"
+                          , "could"
+                          , "be"
+                          , "something"
+                          , "else"
+                          , "though,"
+                          , "so"
+                          , "here"
+                          , "is"
+                          , "a"
+                          , "valid"
+                          , "definition"
+                          , "for"
+                          , "reference:"
+                          ]
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format with your `" ++ Name.toChars name ++ "` definition!"
                       ]
                   )
@@ -3650,18 +3650,18 @@ toLetDefReport source name def startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was not expecting to see this symbol here:",
-                    D.stack
+                      "I was not expecting to see this symbol here:"
+                  , D.stack
                       [ D.reflow $
                           "I am not sure what is going wrong exactly, so here is a valid\
-                          \ definition (with an optional type annotation) for reference:",
-                        D.indent 4 $
+                          \ definition (with an optional type annotation) for reference:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format with your `" ++ Name.toChars name ++ "` definition!"
                       ]
                   )
@@ -3674,18 +3674,18 @@ toLetDefReport source name def startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                    D.stack
+                      "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+                  , D.stack
                       [ D.reflow $
                           "I am not sure what is going wrong exactly, so here is a valid\
-                          \ definition (with an optional type annotation) for reference:",
-                        D.indent 4 $
+                          \ definition (with an optional type annotation) for reference:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "greet : String -> String",
-                              "greet name =",
-                              "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-                            ],
-                        D.reflow $
+                            [ "greet : String -> String"
+                            , "greet name ="
+                            , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+                            ]
+                      , D.reflow $
                           "Try to use that format!"
                       ]
                   )
@@ -3700,11 +3700,11 @@ toLetDefReport source name def startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an argument or an equals sign next.",
-                    defNote
+                      "I was expecting to see an argument or an equals sign next."
+                  , defNote
                   ]
               )
     DefIndentType row col ->
@@ -3716,11 +3716,11 @@ toLetDefReport source name def startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` type annotation:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` type annotation:"
+              , D.stack
                   [ D.reflow $
-                      "I just saw a colon, so I am expecting to see a type next.",
-                    defNote
+                      "I just saw a colon, so I am expecting to see a type next."
+                  , defNote
                   ]
               )
     DefIndentBody row col ->
@@ -3732,11 +3732,11 @@ toLetDefReport source name def startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                D.stack
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an expression next. What is it equal to?",
-                    declDefNote
+                      "I was expecting to see an expression next. What is it equal to?"
+                  , declDefNote
                   ]
               )
     DefAlignment indent row col ->
@@ -3749,8 +3749,8 @@ toLetDefReport source name def startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:",
-                D.reflow $
+                  "I got stuck while parsing the `" ++ Name.toChars name ++ "` definition:"
+              , D.reflow $
                   "I just saw a type annotation indented "
                     ++ show indent
                     ++ " spaces, so I was\
@@ -3766,14 +3766,14 @@ defNote :: D.Doc
 defNote =
   D.stack
     [ D.reflow $
-        "Here is a valid definition (with a type annotation) for reference:",
-      D.indent 4 $
+        "Here is a valid definition (with a type annotation) for reference:"
+    , D.indent 4 $
         D.vcat $
-          [ "greet : String -> String",
-            "greet name =",
-            "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
-          ],
-      D.reflow $
+          [ "greet : String -> String"
+          , "greet name ="
+          , "  " <> D.dullyellow "\"Hello \"" <> " ++ name ++ " <> D.dullyellow "\"!\""
+          ]
+    , D.reflow $
         "The top line (called a \"type annotation\") is optional. You can leave it off\
         \ if you want. As you get more comfortable with Gren and as your project grows,\
         \ it becomes more and more valuable to add them though! They work great as\
@@ -3796,14 +3796,14 @@ toLetDestructReport source destruct startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck trying to parse this definition:",
-                case Code.whatIsNext source row col of
+                  "I got stuck trying to parse this definition:"
+              , case Code.whatIsNext source row col of
                   Code.Operator ":" ->
                     D.stack
                       [ D.reflow $
                           "I was expecting to see an equals sign next, followed by an expression\
-                          \ telling me what to compute.",
-                        D.toSimpleNote $
+                          \ telling me what to compute."
+                      , D.toSimpleNote $
                           "It looks like you may be trying to write a type annotation? It is not\
                           \ possible to add type annotations on destructuring definitions like this.\
                           \ You can assign a name to the overall structure, put a type annotation on\
@@ -3825,8 +3825,8 @@ toLetDestructReport source destruct startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck trying to parse this definition:",
-                D.reflow $
+                  "I got stuck trying to parse this definition:"
+              , D.reflow $
                   "I was expecting to see an equals sign next, followed by an expression\
                   \ telling me what to compute."
               )
@@ -3839,8 +3839,8 @@ toLetDestructReport source destruct startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck while parsing this definition:",
-                D.reflow $
+                  "I got stuck while parsing this definition:"
+              , D.reflow $
                   "I was expecting to see an expression next. What is it equal to?"
               )
 
@@ -3867,8 +3867,8 @@ toCaseReport source context case_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a `case` expression, but I got stuck here:",
-                    D.reflow $
+                      "I am partway through parsing a `case` expression, but I got stuck here:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` in one of your\
@@ -3883,18 +3883,18 @@ toCaseReport source context case_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a `case` expression, but I got stuck here:",
-                    D.fillSep $
-                      [ "I",
-                        "am",
-                        "seeing",
-                        D.dullyellow "=",
-                        "but",
-                        "maybe",
-                        "you",
-                        "want",
-                        D.green "->",
-                        "instead?"
+                      "I am partway through parsing a `case` expression, but I got stuck here:"
+                  , D.fillSep $
+                      [ "I"
+                      , "am"
+                      , "seeing"
+                      , D.dullyellow "="
+                      , "but"
+                      , "maybe"
+                      , "you"
+                      , "want"
+                      , D.green "->"
+                      , "instead?"
                       ]
                   )
         _ ->
@@ -3906,10 +3906,10 @@ toCaseReport source context case_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a `case` expression, but I got stuck here:",
-                    D.stack
-                      [ D.reflow "I was expecting to see an arrow next.",
-                        noteForCaseIndentError
+                      "I am partway through parsing a `case` expression, but I got stuck here:"
+                  , D.stack
+                      [ D.reflow "I was expecting to see an arrow next."
+                      , noteForCaseIndentError
                       ]
                   )
     CaseExpr expr row col ->
@@ -3928,20 +3928,20 @@ toCaseReport source context case_ startRow startCol =
     CaseIndentArrow row col ->
       toUnfinishCaseReport source row col startRow startCol $
         D.fillSep
-          [ "I",
-            "just",
-            "saw",
-            "a",
-            "pattern,",
-            "so",
-            "I",
-            "was",
-            "expecting",
-            "to",
-            "see",
-            "a",
-            D.dullyellow "->",
-            "next."
+          [ "I"
+          , "just"
+          , "saw"
+          , "a"
+          , "pattern,"
+          , "so"
+          , "I"
+          , "was"
+          , "expecting"
+          , "to"
+          , "see"
+          , "a"
+          , D.dullyellow "->"
+          , "next."
           ]
     CaseIndentBranch row col ->
       toUnfinishCaseReport source row col startRow startCol $
@@ -3963,10 +3963,10 @@ toUnfinishCaseReport source row col startRow startCol message =
           surroundings
           (Just region)
           ( D.reflow $
-              "I was partway through parsing a `case` expression, but I got stuck here:",
-            D.stack
-              [ message,
-                noteForCaseError
+              "I was partway through parsing a `case` expression, but I got stuck here:"
+          , D.stack
+              [ message
+              , noteForCaseError
               ]
           )
 
@@ -3974,16 +3974,16 @@ noteForCaseError :: D.Doc
 noteForCaseError =
   D.stack
     [ D.toSimpleNote $
-        "Here is an example of a valid `case` expression for reference.",
-      D.vcat $
-        [ D.indent 4 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"],
-          D.indent 6 $ D.fillSep [D.blue "Just", "width", "->"],
-          D.indent 8 $ D.fillSep ["width", "+", D.dullyellow "200"],
-          "",
-          D.indent 6 $ D.fillSep [D.blue "Nothing", "->"],
-          D.indent 8 $ D.fillSep [D.dullyellow "400"]
-        ],
-      D.reflow $
+        "Here is an example of a valid `case` expression for reference."
+    , D.vcat $
+        [ D.indent 4 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"]
+        , D.indent 6 $ D.fillSep [D.blue "Just", "width", "->"]
+        , D.indent 8 $ D.fillSep ["width", "+", D.dullyellow "200"]
+        , ""
+        , D.indent 6 $ D.fillSep [D.blue "Nothing", "->"]
+        , D.indent 8 $ D.fillSep [D.dullyellow "400"]
+        ]
+    , D.reflow $
         "Notice the indentation. Each pattern is aligned, and each branch is indented\
         \ a bit more than the corresponding pattern. That is important!"
     ]
@@ -3993,16 +3993,16 @@ noteForCaseIndentError =
   D.stack
     [ D.toSimpleNote $
         "Sometimes I get confused by indentation, so try to make your `case` look\
-        \ something like this:",
-      D.vcat $
-        [ D.indent 4 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"],
-          D.indent 6 $ D.fillSep [D.blue "Just", "width", "->"],
-          D.indent 8 $ D.fillSep ["width", "+", D.dullyellow "200"],
-          "",
-          D.indent 6 $ D.fillSep [D.blue "Nothing", "->"],
-          D.indent 8 $ D.fillSep [D.dullyellow "400"]
-        ],
-      D.reflow $
+        \ something like this:"
+    , D.vcat $
+        [ D.indent 4 $ D.fillSep [D.cyan "case", "maybeWidth", D.cyan "of"]
+        , D.indent 6 $ D.fillSep [D.blue "Just", "width", "->"]
+        , D.indent 8 $ D.fillSep ["width", "+", D.dullyellow "200"]
+        , ""
+        , D.indent 6 $ D.fillSep [D.blue "Nothing", "->"]
+        , D.indent 8 $ D.fillSep [D.dullyellow "400"]
+        ]
+    , D.reflow $
         "Notice the indentation! Patterns are aligned with each other. Same indentation.\
         \ The expressions after each arrow are all indented a bit more than the patterns.\
         \ That is important!"
@@ -4024,17 +4024,17 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see more of this `if` expression, but I got stuck here:",
-                D.fillSep $
-                  [ "I",
-                    "was",
-                    "expecting",
-                    "to",
-                    "see",
-                    "the",
-                    D.cyan "then",
-                    "keyword",
-                    "next."
+                  "I was expecting to see more of this `if` expression, but I got stuck here:"
+              , D.fillSep $
+                  [ "I"
+                  , "was"
+                  , "expecting"
+                  , "to"
+                  , "see"
+                  , "the"
+                  , D.cyan "then"
+                  , "keyword"
+                  , "next."
                   ]
               )
     IfElse row col ->
@@ -4046,17 +4046,17 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see more of this `if` expression, but I got stuck here:",
-                D.fillSep $
-                  [ "I",
-                    "was",
-                    "expecting",
-                    "to",
-                    "see",
-                    "the",
-                    D.cyan "else",
-                    "keyword",
-                    "next."
+                  "I was expecting to see more of this `if` expression, but I got stuck here:"
+              , D.fillSep $
+                  [ "I"
+                  , "was"
+                  , "expecting"
+                  , "to"
+                  , "see"
+                  , "the"
+                  , D.cyan "else"
+                  , "keyword"
+                  , "next."
                   ]
               )
     IfElseBranchStart row col ->
@@ -4068,8 +4068,8 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the start of an `else` branch, but then I got stuck here:",
-                D.reflow $
+                  "I just saw the start of an `else` branch, but then I got stuck here:"
+              , D.reflow $
                   "I was expecting to see an expression next. Maybe it is not filled in yet?"
               )
     IfCondition expr row col ->
@@ -4087,26 +4087,26 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see more of this `if` expression, but I got stuck here:",
-                D.stack
+                  "I was expecting to see more of this `if` expression, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "an",
-                        "expression",
-                        "like",
-                        D.dullyellow "x < 0",
-                        "that",
-                        "evaluates",
-                        "to",
-                        "True",
-                        "or",
-                        "False."
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "an"
+                      , "expression"
+                      , "like"
+                      , D.dullyellow "x < 0"
+                      , "that"
+                      , "evaluates"
+                      , "to"
+                      , "True"
+                      , "or"
+                      , "False."
+                      ]
+                  , D.toSimpleNote $
                       "I can be confused by indentation. Maybe something is not indented enough?"
                   ]
               )
@@ -4119,20 +4119,20 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see more of this `if` expression, but I got stuck here:",
-                D.stack
+                  "I was expecting to see more of this `if` expression, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "the",
-                        D.cyan "then",
-                        "keyword",
-                        "next."
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "the"
+                      , D.cyan "then"
+                      , "keyword"
+                      , "next."
+                      ]
+                  , D.toSimpleNote $
                       "I can be confused by indentation. Maybe something is not indented enough?"
                   ]
               )
@@ -4145,11 +4145,11 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck after the start of this `then` branch:",
-                D.stack
+                  "I got stuck after the start of this `then` branch:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an expression next. Maybe it is not filled in yet?",
-                    D.toSimpleNote $
+                      "I was expecting to see an expression next. Maybe it is not filled in yet?"
+                  , D.toSimpleNote $
                       "I can be confused by indentation, so if the `then` branch is already\
                       \ present, it may not be indented enough for me to recognize it."
                   ]
@@ -4163,11 +4163,11 @@ toIfReport source context if_ startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I got stuck after the start of this `else` branch:",
-                D.stack
+                  "I got stuck after the start of this `else` branch:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see an expression next. Maybe it is not filled in yet?",
-                    D.toSimpleNote $
+                      "I was expecting to see an expression next. Maybe it is not filled in yet?"
+                  , D.toSimpleNote $
                       "I can be confused by indentation, so if the `else` branch is already\
                       \ present, it may not be indented enough for me to recognize it."
                   ]
@@ -4183,24 +4183,24 @@ toIfReport source context if_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through an `if` expression when I got stuck here:",
-                    D.fillSep $
-                      [ "I",
-                        "think",
-                        "this",
-                        D.cyan "else",
-                        "keyword",
-                        "needs",
-                        "to",
-                        "be",
-                        "indented",
-                        "more.",
-                        "Try",
-                        "adding",
-                        "some",
-                        "spaces",
-                        "before",
-                        "it."
+                      "I was partway through an `if` expression when I got stuck here:"
+                  , D.fillSep $
+                      [ "I"
+                      , "think"
+                      , "this"
+                      , D.cyan "else"
+                      , "keyword"
+                      , "needs"
+                      , "to"
+                      , "be"
+                      , "indented"
+                      , "more."
+                      , "Try"
+                      , "adding"
+                      , "some"
+                      , "spaces"
+                      , "before"
+                      , "it."
                       ]
                   )
         Nothing ->
@@ -4212,34 +4212,34 @@ toIfReport source context if_ startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was expecting to see an `else` branch after this:",
-                    D.stack
+                      "I was expecting to see an `else` branch after this:"
+                  , D.stack
                       [ D.fillSep
-                          [ "I",
-                            "know",
-                            "what",
-                            "to",
-                            "do",
-                            "when",
-                            "the",
-                            "condition",
-                            "is",
-                            "True,",
-                            "but",
-                            "what",
-                            "happens",
-                            "when",
-                            "it",
-                            "is",
-                            "False?",
-                            "Add",
-                            "an",
-                            D.cyan "else",
-                            "branch",
-                            "to",
-                            "handle",
-                            "that",
-                            "scenario!"
+                          [ "I"
+                          , "know"
+                          , "what"
+                          , "to"
+                          , "do"
+                          , "when"
+                          , "the"
+                          , "condition"
+                          , "is"
+                          , "True,"
+                          , "but"
+                          , "what"
+                          , "happens"
+                          , "when"
+                          , "it"
+                          , "is"
+                          , "False?"
+                          , "Add"
+                          , "an"
+                          , D.cyan "else"
+                          , "branch"
+                          , "to"
+                          , "handle"
+                          , "that"
+                          , "scenario!"
                           ]
                       ]
                   )
@@ -4260,8 +4260,8 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just started parsing a record, but I got stuck on this field name:",
-                    D.reflow $
+                      "I just started parsing a record, but I got stuck on this field name:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a field name, but \
@@ -4276,35 +4276,35 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just started parsing a record, but I got stuck here:",
-                    D.stack
+                      "I just started parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "a",
-                            "record",
-                            "field",
-                            "defined",
-                            "next,",
-                            "so",
-                            "I",
-                            "am",
-                            "looking",
-                            "for",
-                            "a",
-                            "name",
-                            "like",
-                            D.dullyellow "userName",
-                            "or",
-                            D.dullyellow "plantHeight" <> "."
-                          ],
-                        D.toSimpleNote $
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "a"
+                          , "record"
+                          , "field"
+                          , "defined"
+                          , "next,"
+                          , "so"
+                          , "I"
+                          , "am"
+                          , "looking"
+                          , "for"
+                          , "a"
+                          , "name"
+                          , "like"
+                          , D.dullyellow "userName"
+                          , "or"
+                          , D.dullyellow "plantHeight" <> "."
+                          ]
+                      , D.toSimpleNote $
                           "Field names must start with a lower-case letter. After that, you can use\
-                          \ any sequence of letters, numbers, and underscores.",
-                        noteForRecordError
+                          \ any sequence of letters, numbers, and underscores."
+                      , noteForRecordError
                       ]
                   )
     RecordEnd row col ->
@@ -4316,32 +4316,32 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a record, but I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "closing",
-                        "curly",
-                        "brace",
-                        "before",
-                        "this,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow "}",
-                        "and",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "closing"
+                      , "curly"
+                      , "brace"
+                      , "before"
+                      , "this,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow "}"
+                      , "and"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
+                      ]
+                  , D.toSimpleNote $
                       "When I get stuck like this, it usually means that there is a missing parenthesis\
                       \ or bracket somewhere earlier. It could also be a stray keyword or operator."
                   ]
@@ -4357,8 +4357,8 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record, but I got stuck on this field name:",
-                    D.reflow $
+                      "I am partway through parsing a record, but I got stuck on this field name:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a field name, but \
@@ -4373,13 +4373,13 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I am seeing two commas in a row. This is the second one!",
-                        D.reflow $
-                          "Just delete one of the commas and you should be all set!",
-                        noteForRecordError
+                          "I am seeing two commas in a row. This is the second one!"
+                      , D.reflow $
+                          "Just delete one of the commas and you should be all set!"
+                      , noteForRecordError
                       ]
                   )
         Code.Close _ '}' ->
@@ -4391,12 +4391,12 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
                           "Trailing commas are not allowed in records. Try deleting the comma that appears\
-                          \ before this closing curly brace.",
-                        noteForRecordError
+                          \ before this closing curly brace."
+                      , noteForRecordError
                       ]
                   )
         _ ->
@@ -4408,35 +4408,35 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "a",
-                            "record",
-                            "field",
-                            "defined",
-                            "next,",
-                            "so",
-                            "I",
-                            "am",
-                            "looking",
-                            "for",
-                            "a",
-                            "name",
-                            "like",
-                            D.dullyellow "userName",
-                            "or",
-                            D.dullyellow "plantHeight" <> "."
-                          ],
-                        D.toSimpleNote $
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "a"
+                          , "record"
+                          , "field"
+                          , "defined"
+                          , "next,"
+                          , "so"
+                          , "I"
+                          , "am"
+                          , "looking"
+                          , "for"
+                          , "a"
+                          , "name"
+                          , "like"
+                          , D.dullyellow "userName"
+                          , "or"
+                          , D.dullyellow "plantHeight" <> "."
+                          ]
+                      , D.toSimpleNote $
                           "Field names must start with a lower-case letter. After that, you can use\
-                          \ any sequence of letters, numbers, and underscores.",
-                        noteForRecordError
+                          \ any sequence of letters, numbers, and underscores."
+                      , noteForRecordError
                       ]
                   )
     RecordEquals row col ->
@@ -4448,34 +4448,34 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a record, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "just",
-                        "saw",
-                        "a",
-                        "field",
-                        "name,",
-                        "so",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "an",
-                        "equals",
-                        "sign",
-                        "next.",
-                        "So",
-                        "try",
-                        "putting",
-                        "an",
-                        D.green "=",
-                        "sign",
-                        "here?"
-                      ],
-                    noteForRecordError
+                      [ "I"
+                      , "just"
+                      , "saw"
+                      , "a"
+                      , "field"
+                      , "name,"
+                      , "so"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "an"
+                      , "equals"
+                      , "sign"
+                      , "next."
+                      , "So"
+                      , "try"
+                      , "putting"
+                      , "an"
+                      , D.green "="
+                      , "sign"
+                      , "here?"
+                      ]
+                  , noteForRecordError
                   ]
               )
     RecordPipe row col ->
@@ -4487,33 +4487,33 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a record, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "just",
-                        "saw",
-                        "an",
-                        "expression",
-                        "so",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "|",
-                        "symbol",
-                        "next.",
-                        "So",
-                        "try",
-                        "putting",
-                        "a",
-                        D.green "|",
-                        "sign",
-                        "here?"
-                      ],
-                    noteForRecordError
+                      [ "I"
+                      , "just"
+                      , "saw"
+                      , "an"
+                      , "expression"
+                      , "so"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "|"
+                      , "symbol"
+                      , "next."
+                      , "So"
+                      , "try"
+                      , "putting"
+                      , "a"
+                      , D.green "|"
+                      , "sign"
+                      , "here?"
+                      ]
+                  , noteForRecordError
                   ]
               )
     RecordExpr expr row col ->
@@ -4531,26 +4531,26 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the opening curly brace of a record, but then I got stuck here:",
-                D.stack
+                  "I just saw the opening curly brace of a record, but then I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "am",
-                        "expecting",
-                        "a",
-                        "record",
-                        "like",
-                        D.dullyellow "{ x = 3, y = 4 }",
-                        "here.",
-                        "Try",
-                        "defining",
-                        "some",
-                        "fields",
-                        "of",
-                        "your",
-                        "own?"
-                      ],
-                    noteForRecordIndentError
+                      [ "I"
+                      , "am"
+                      , "expecting"
+                      , "a"
+                      , "record"
+                      , "like"
+                      , D.dullyellow "{ x = 3, y = 4 }"
+                      , "here."
+                      , "Try"
+                      , "defining"
+                      , "some"
+                      , "fields"
+                      , "of"
+                      , "your"
+                      , "own?"
+                      ]
+                  , noteForRecordIndentError
                   ]
               )
     RecordIndentEnd row col ->
@@ -4564,11 +4564,11 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing a record, but I got stuck here:",
-                    D.stack
+                      "I was partway through parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I need this curly brace to be indented more. Try adding some spaces before it!",
-                        noteForRecordError
+                          "I need this curly brace to be indented more. Try adding some spaces before it!"
+                      , noteForRecordError
                       ]
                   )
         Nothing ->
@@ -4580,31 +4580,31 @@ toRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing a record, but I got stuck here:",
-                    D.stack
+                      "I was partway through parsing a record, but I got stuck here:"
+                  , D.stack
                       [ D.fillSep $
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "a",
-                            "closing",
-                            "curly",
-                            "brace",
-                            "next.",
-                            "Try",
-                            "putting",
-                            "a",
-                            D.green "}",
-                            "next",
-                            "and",
-                            "see",
-                            "if",
-                            "that",
-                            "helps?"
-                          ],
-                        noteForRecordIndentError
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "a"
+                          , "closing"
+                          , "curly"
+                          , "brace"
+                          , "next."
+                          , "Try"
+                          , "putting"
+                          , "a"
+                          , D.green "}"
+                          , "next"
+                          , "and"
+                          , "see"
+                          , "if"
+                          , "that"
+                          , "helps?"
+                          ]
+                      , noteForRecordIndentError
                       ]
                   )
     RecordIndentField row col ->
@@ -4616,13 +4616,13 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record, but I got stuck after that last comma:",
-                D.stack
+                  "I am partway through parsing a record, but I got stuck after that last comma:"
+              , D.stack
                   [ D.reflow $
                       "Trailing commas are not allowed in records, so the fix may be to\
                       \ delete that last comma? Or maybe you were in the middle of defining\
-                      \ an additional field?",
-                    noteForRecordError
+                      \ an additional field?"
+                  , noteForRecordError
                   ]
               )
     RecordIndentEquals row col ->
@@ -4635,19 +4635,19 @@ toRecordReport source context record startRow startCol =
               (Just region)
               ( D.reflow $
                   "I am partway through parsing a record. I just saw a record\
-                  \ field, so I was expecting to see an equals sign next:",
-                D.stack
+                  \ field, so I was expecting to see an equals sign next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Try",
-                        "putting",
-                        "an",
-                        D.green "=",
-                        "followed",
-                        "by",
-                        "an",
-                        "expression?"
-                      ],
-                    noteForRecordIndentError
+                      [ "Try"
+                      , "putting"
+                      , "an"
+                      , D.green "="
+                      , "followed"
+                      , "by"
+                      , "an"
+                      , "expression?"
+                      ]
+                  , noteForRecordIndentError
                   ]
               )
     RecordIndentExpr row col ->
@@ -4659,20 +4659,20 @@ toRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record, and I was expecting to run into an expression next:",
-                D.stack
+                  "I am partway through parsing a record, and I was expecting to run into an expression next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Try",
-                        "putting",
-                        "something",
-                        "like",
-                        D.dullyellow "42",
-                        "or",
-                        D.dullyellow "\"hello\"",
-                        "for",
-                        "now?"
-                      ],
-                    noteForRecordIndentError
+                      [ "Try"
+                      , "putting"
+                      , "something"
+                      , "like"
+                      , D.dullyellow "42"
+                      , "or"
+                      , D.dullyellow "\"hello\""
+                      , "for"
+                      , "now?"
+                      ]
+                  , noteForRecordIndentError
                   ]
               )
 
@@ -4680,15 +4680,15 @@ noteForRecordError :: D.Doc
 noteForRecordError =
   D.stack $
     [ D.toSimpleNote
-        "If you are trying to define a record across multiple lines, I recommend using this format:",
-      D.indent 4 $
+        "If you are trying to define a record across multiple lines, I recommend using this format:"
+    , D.indent 4 $
         D.vcat $
-          [ "{ name = " <> D.dullyellow "\"Alice\"",
-            ", age = " <> D.dullyellow "42",
-            ", height = " <> D.dullyellow "1.75",
-            "}"
-          ],
-      D.reflow $
+          [ "{ name = " <> D.dullyellow "\"Alice\""
+          , ", age = " <> D.dullyellow "42"
+          , ", height = " <> D.dullyellow "1.75"
+          , "}"
+          ]
+    , D.reflow $
         "Notice that each line starts with some indentation. Usually two or four spaces.\
         \ This is the stylistic convention in the Gren ecosystem."
     ]
@@ -4698,15 +4698,15 @@ noteForRecordIndentError =
   D.stack
     [ D.toSimpleNote
         "I may be confused by indentation. For example, if you are trying to define\
-        \ a record across multiple lines, I recommend using this format:",
-      D.indent 4 $
+        \ a record across multiple lines, I recommend using this format:"
+    , D.indent 4 $
         D.vcat $
-          [ "{ name = " <> D.dullyellow "\"Alice\"",
-            ", age = " <> D.dullyellow "42",
-            ", height = " <> D.dullyellow "1.75",
-            "}"
-          ],
-      D.reflow $
+          [ "{ name = " <> D.dullyellow "\"Alice\""
+          , ", age = " <> D.dullyellow "42"
+          , ", height = " <> D.dullyellow "1.75"
+          , "}"
+          ]
+    , D.reflow $
         "Notice that each line starts with some indentation. Usually two or four spaces.\
         \ This is the stylistic convention in the Gren ecosystem!"
     ]
@@ -4729,31 +4729,31 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing an expression, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing an expression, but I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "closing",
-                        "parenthesis",
-                        "before",
-                        "this,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow ")",
-                        "and",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "closing"
+                      , "parenthesis"
+                      , "before"
+                      , "this,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow ")"
+                      , "and"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
+                      ]
+                  , D.toSimpleNote $
                       "When I get stuck like this, it usually means that there is a missing parenthesis\
                       \ or bracket somewhere earlier. It could also be a stray keyword or operator."
                   ]
@@ -4767,10 +4767,10 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see a closing parentheses next, but I got stuck here:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"],
-                    D.toSimpleNote $
+                  "I was expecting to see a closing parentheses next, but I got stuck here:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"]
+                  , D.toSimpleNote $
                       "I can get stuck when I run into keywords, operators, parentheses, or brackets\
                       \ unexpectedly. So there may be some earlier syntax trouble (like extra parenthesis\
                       \ or missing brackets) that is confusing me."
@@ -4784,10 +4784,10 @@ toParenthesizedReport source context parenthesized startRow startCol =
               source
               surroundings
               (Just region)
-              ( D.reflow "I was expecting a closing parenthesis here:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"],
-                    D.toSimpleNote $
+              ( D.reflow "I was expecting a closing parenthesis here:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"]
+                  , D.toSimpleNote $
                       "I think I am parsing an operator function right now, so I am expecting to see\
                       \ something like (+) or (&&) where an operator is surrounded by parentheses with\
                       \ no extra spaces."
@@ -4802,8 +4802,8 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I ran into an unexpected symbol here:",
-                D.fillSep $
+                  "I ran into an unexpected symbol here:"
+              , D.fillSep $
                   case operator of
                     BadDot -> ["Maybe", "you", "wanted", "a", "record", "accessor", "like", D.dullyellow ".x", "or", D.dullyellow ".name", "instead?"]
                     BadPipe -> ["Try", D.dullyellow "(||)", "instead?", "To", "turn", "boolean", "OR", "into", "a", "function?"]
@@ -4820,25 +4820,25 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw an open parenthesis, so I was expecting to see an expression next.",
-                D.stack
+                  "I just saw an open parenthesis, so I was expecting to see an expression next."
+              , D.stack
                   [ D.fillSep $
-                      [ "Something",
-                        "like",
-                        D.dullyellow "(4 + 5)",
-                        "or",
-                        D.dullyellow "(String.reverse \"desserts\")" <> ".",
-                        "Anything",
-                        "where",
-                        "you",
-                        "are",
-                        "putting",
-                        "parentheses",
-                        "around",
-                        "normal",
-                        "expressions."
-                      ],
-                    D.toSimpleNote $
+                      [ "Something"
+                      , "like"
+                      , D.dullyellow "(4 + 5)"
+                      , "or"
+                      , D.dullyellow "(String.reverse \"desserts\")" <> "."
+                      , "Anything"
+                      , "where"
+                      , "you"
+                      , "are"
+                      , "putting"
+                      , "parentheses"
+                      , "around"
+                      , "normal"
+                      , "expressions."
+                      ]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have an expression but it is not indented enough?"
                   ]
@@ -4852,10 +4852,10 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see a closing parenthesis next:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"],
-                    D.toSimpleNote $
+                  "I was expecting to see a closing parenthesis next:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a closing parenthesis but it is not indented enough?"
                   ]
@@ -4869,10 +4869,10 @@ toParenthesizedReport source context parenthesized startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see a closing parenthesis next:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"],
-                    D.toSimpleNote $
+                  "I was expecting to see a closing parenthesis next:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a closing parenthesis but it is not indented enough?"
                   ]
@@ -4892,32 +4892,32 @@ toArrayReport source context array startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing an array, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing an array, but I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "closing",
-                        "square",
-                        "bracket",
-                        "before",
-                        "this,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow "]",
-                        "and",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "closing"
+                      , "square"
+                      , "bracket"
+                      , "before"
+                      , "this,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow "]"
+                      , "and"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
+                      ]
+                  , D.toSimpleNote $
                       "When I get stuck like this, it usually means that there is a missing parenthesis\
                       \ or bracket somewhere earlier. It could also be a stray keyword or operator."
                   ]
@@ -4933,20 +4933,20 @@ toArrayReport source context array startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was expecting to see another array entry after that last comma:",
-                    D.stack
+                      "I was expecting to see another array entry after that last comma:"
+                  , D.stack
                       [ D.reflow $
-                          "Trailing commas are not allowed in arrays, so the fix may be to delete the comma?",
-                        D.toSimpleNote
-                          "I recommend using the following format for arrays that span multiple lines:",
-                        D.indent 4 $
+                          "Trailing commas are not allowed in arrays, so the fix may be to delete the comma?"
+                      , D.toSimpleNote
+                          "I recommend using the following format for arrays that span multiple lines:"
+                      , D.indent 4 $
                           D.vcat $
-                            [ "[ " <> D.dullyellow "\"Alice\"",
-                              ", " <> D.dullyellow "\"Bob\"",
-                              ", " <> D.dullyellow "\"Chuck\"",
-                              "]"
-                            ],
-                        D.reflow $
+                            [ "[ " <> D.dullyellow "\"Alice\""
+                            , ", " <> D.dullyellow "\"Bob\""
+                            , ", " <> D.dullyellow "\"Chuck\""
+                            , "]"
+                            ]
+                      , D.reflow $
                           "Notice that each line starts with some indentation. Usually two or four spaces.\
                           \ This is the stylistic convention in the Gren ecosystem."
                       ]
@@ -4962,32 +4962,32 @@ toArrayReport source context array startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing an array, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing an array, but I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "closing",
-                        "square",
-                        "bracket",
-                        "before",
-                        "this,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow "]",
-                        "and",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "closing"
+                      , "square"
+                      , "bracket"
+                      , "before"
+                      , "this,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow "]"
+                      , "and"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
+                      ]
+                  , D.toSimpleNote $
                       "When I get stuck like this, it usually means that there is a missing parenthesis\
                       \ or bracket somewhere earlier. It could also be a stray keyword or operator."
                   ]
@@ -5001,101 +5001,101 @@ toArrayReport source context array startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I cannot find the end of this array:",
-                D.stack
+                  "I cannot find the end of this array:"
+              , D.stack
                   [ D.fillSep $
-                      [ "You",
-                        "could",
-                        "change",
-                        "it",
-                        "to",
-                        "something",
-                        "like",
-                        D.dullyellow "[3,4,5]",
-                        "or",
-                        "even",
-                        "just",
-                        D.dullyellow "[]" <> ".",
-                        "Anything",
-                        "where",
-                        "there",
-                        "is",
-                        "an",
-                        "open",
-                        "and",
-                        "close",
-                        "square",
-                        "brace,",
-                        "and",
-                        "where",
-                        "the",
-                        "elements",
-                        "of",
-                        "the",
-                        "array",
-                        "are",
-                        "separated",
-                        "by",
-                        "commas."
-                      ],
-                    D.toSimpleNote
+                      [ "You"
+                      , "could"
+                      , "change"
+                      , "it"
+                      , "to"
+                      , "something"
+                      , "like"
+                      , D.dullyellow "[3,4,5]"
+                      , "or"
+                      , "even"
+                      , "just"
+                      , D.dullyellow "[]" <> "."
+                      , "Anything"
+                      , "where"
+                      , "there"
+                      , "is"
+                      , "an"
+                      , "open"
+                      , "and"
+                      , "close"
+                      , "square"
+                      , "brace,"
+                      , "and"
+                      , "where"
+                      , "the"
+                      , "elements"
+                      , "of"
+                      , "the"
+                      , "array"
+                      , "are"
+                      , "separated"
+                      , "by"
+                      , "commas."
+                      ]
+                  , D.toSimpleNote
                       "I may be confused by indentation. For example, if you are trying to define\
-                      \ an array across multiple lines, I recommend using this format:",
-                    D.indent 4 $
+                      \ an array across multiple lines, I recommend using this format:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ "[ " <> D.dullyellow "\"Alice\"",
-                          ", " <> D.dullyellow "\"Bob\"",
-                          ", " <> D.dullyellow "\"Chuck\"",
-                          "]"
-                        ],
-                    D.reflow $
+                        [ "[ " <> D.dullyellow "\"Alice\""
+                        , ", " <> D.dullyellow "\"Bob\""
+                        , ", " <> D.dullyellow "\"Chuck\""
+                        , "]"
+                        ]
+                  , D.reflow $
                       "Notice that each line starts with some indentation. Usually two or four spaces.\
                       \ This is the stylistic convention in the Gren ecosystem."
                   ]
               )
-    ArrayIndentEnd row col ->
-      let surroundings = A.Region (A.Position startRow startCol) (A.Position row col)
-          region = toRegion row col
-       in Report.Report "UNFINISHED ARRAY" region [] $
-            Code.toSnippet
-              source
-              surroundings
-              (Just region)
-              ( D.reflow $
-                  "I cannot find the end of this array:",
-                D.stack
-                  [ D.fillSep $
-                      [ "You",
-                        "can",
-                        "just",
-                        "add",
-                        "a",
-                        "closing",
-                        D.dullyellow "]",
-                        "right",
-                        "here,",
-                        "and",
-                        "I",
-                        "will",
-                        "be",
-                        "all",
-                        "set!"
-                      ],
-                    D.toSimpleNote
-                      "I may be confused by indentation. For example, if you are trying to define\
-                      \ an array across multiple lines, I recommend using this format:",
-                    D.indent 4 $
-                      D.vcat $
-                        [ "[ " <> D.dullyellow "\"Alice\"",
-                          ", " <> D.dullyellow "\"Bob\"",
-                          ", " <> D.dullyellow "\"Chuck\"",
-                          "]"
-                        ],
-                    D.reflow $
-                      "Notice that each line starts with some indentation. Usually two or four spaces.\
-                      \ This is the stylistic convention in the Gren ecosystem."
-                  ]
-              )
+    ArrayIndentEnd row col -> undefined
+    -- let surroundings = A.Region (A.Position startRow startCol) (A.Position row col)
+    --     region = toRegion row col
+    --  in Report.Report "UNFINISHED ARRAY" region [] $
+    --       Code.toSnippet
+    --         source
+    --         surroundings
+    --         (Just region)
+    --         ( D.reflow $
+    --             "I cannot find the end of this array:",
+    --           D.stack
+    --             [ D.fillSep $
+    --                 [ "You",
+    --                   "can",
+    --                   "just",
+    --                   "add",
+    --                   "a",
+    --                   "closing",
+    --                   D.dullyellow "]",
+    --                   "right",
+    --                   "here,",
+    --                   "and",
+    --                   "I",
+    --                   "will",
+    --                   "be",
+    --                   "all",
+    --                   "set!"
+    --                 ],
+    --               D.toSimpleNote
+    --                 "I may be confused by indentation. For example, if you are trying to define\
+    --                 \ an array across multiple lines, I recommend using this format:",
+    --               D.indent 4 $
+    --                 D.vcat $
+    --                   [ "[ " <> D.dullyellow "\"Alice\"",
+    --                     ", " <> D.dullyellow "\"Bob\"",
+    --                     ", " <> D.dullyellow "\"Chuck\"",
+    --                     "]"
+    --                   ],
+    --               D.reflow $
+    --                 "Notice that each line starts with some indentation. Usually two or four spaces.\
+    --                 \ This is the stylistic convention in the Gren ecosystem."
+    --             ]
+    --         )
     ArrayIndentExpr row col ->
       let surroundings = A.Region (A.Position startRow startCol) (A.Position row col)
           region = toRegion row col
@@ -5105,20 +5105,20 @@ toArrayReport source context array startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see another array entry after this comma:",
-                D.stack
+                  "I was expecting to see another array entry after this comma:"
+              , D.stack
                   [ D.reflow $
-                      "Trailing commas are not allowed in arrays, so the fix may be to delete the comma?",
-                    D.toSimpleNote
-                      "I recommend using the following format for arrays that span multiple lines:",
-                    D.indent 4 $
+                      "Trailing commas are not allowed in arrays, so the fix may be to delete the comma?"
+                  , D.toSimpleNote
+                      "I recommend using the following format for arrays that span multiple lines:"
+                  , D.indent 4 $
                       D.vcat $
-                        [ "[ " <> D.dullyellow "\"Alice\"",
-                          ", " <> D.dullyellow "\"Bob\"",
-                          ", " <> D.dullyellow "\"Chuck\"",
-                          "]"
-                        ],
-                    D.reflow $
+                        [ "[ " <> D.dullyellow "\"Alice\""
+                        , ", " <> D.dullyellow "\"Bob\""
+                        , ", " <> D.dullyellow "\"Chuck\""
+                        , "]"
+                        ]
+                  , D.reflow $
                       "Notice that each line starts with some indentation. Usually two or four spaces.\
                       \ This is the stylistic convention in the Gren ecosystem."
                   ]
@@ -5144,8 +5144,8 @@ toFuncReport source context func startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was parsing an anonymous function, but I got stuck here:",
-                    D.reflow $
+                      "I was parsing an anonymous function, but I got stuck here:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as an argument, but\
@@ -5160,27 +5160,27 @@ toFuncReport source context func startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just saw the beginning of an anonymous function, so I was expecting to see an arrow next:",
-                    D.fillSep $
-                      [ "The",
-                        "syntax",
-                        "for",
-                        "anonymous",
-                        "functions",
-                        "is",
-                        D.dullyellow "(\\x -> x + 1)",
-                        "so",
-                        "I",
-                        "am",
-                        "missing",
-                        "the",
-                        "arrow",
-                        "and",
-                        "the",
-                        "body",
-                        "of",
-                        "the",
-                        "function."
+                      "I just saw the beginning of an anonymous function, so I was expecting to see an arrow next:"
+                  , D.fillSep $
+                      [ "The"
+                      , "syntax"
+                      , "for"
+                      , "anonymous"
+                      , "functions"
+                      , "is"
+                      , D.dullyellow "(\\x -> x + 1)"
+                      , "so"
+                      , "I"
+                      , "am"
+                      , "missing"
+                      , "the"
+                      , "arrow"
+                      , "and"
+                      , "the"
+                      , "body"
+                      , "of"
+                      , "the"
+                      , "function."
                       ]
                   )
     FuncIndentArg row col ->
@@ -5192,24 +5192,24 @@ toFuncReport source context func startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the beginning of an anonymous function, so I was expecting to see an argument next:",
-                D.stack
+                  "I just saw the beginning of an anonymous function, so I was expecting to see an argument next:"
+              , D.stack
                   [ D.fillSep
-                      [ "Something",
-                        "like",
-                        D.dullyellow "x",
-                        "or",
-                        D.dullyellow "name" <> ".",
-                        "Anything",
-                        "that",
-                        "starts",
-                        "with",
-                        "a",
-                        "lower",
-                        "case",
-                        "letter!"
-                      ],
-                    D.toSimpleNote $
+                      [ "Something"
+                      , "like"
+                      , D.dullyellow "x"
+                      , "or"
+                      , D.dullyellow "name" <> "."
+                      , "Anything"
+                      , "that"
+                      , "starts"
+                      , "with"
+                      , "a"
+                      , "lower"
+                      , "case"
+                      , "letter!"
+                      ]
+                  , D.toSimpleNote $
                       "The syntax for anonymous functions is (\\x -> x + 1) where the backslash\
                       \ is meant to look a bit like a lambda if you squint. This visual pun seemed\
                       \ like a better idea at the time!"
@@ -5224,30 +5224,30 @@ toFuncReport source context func startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the beginning of an anonymous function, so I was expecting to see an arrow next:",
-                D.stack
+                  "I just saw the beginning of an anonymous function, so I was expecting to see an arrow next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "The",
-                        "syntax",
-                        "for",
-                        "anonymous",
-                        "functions",
-                        "is",
-                        D.dullyellow "(\\x -> x + 1)",
-                        "so",
-                        "I",
-                        "am",
-                        "missing",
-                        "the",
-                        "arrow",
-                        "and",
-                        "the",
-                        "body",
-                        "of",
-                        "the",
-                        "function."
-                      ],
-                    D.toSimpleNote $
+                      [ "The"
+                      , "syntax"
+                      , "for"
+                      , "anonymous"
+                      , "functions"
+                      , "is"
+                      , D.dullyellow "(\\x -> x + 1)"
+                      , "so"
+                      , "I"
+                      , "am"
+                      , "missing"
+                      , "the"
+                      , "arrow"
+                      , "and"
+                      , "the"
+                      , "body"
+                      , "of"
+                      , "the"
+                      , "function."
+                      ]
+                  , D.toSimpleNote $
                       "It is possible that I am confused about indetation! I generally recommend\
                       \ switching to named functions if the definition cannot fit inline nicely, so\
                       \ either (1) try to fit the whole anonymous function on one line or (2) break\
@@ -5263,28 +5263,28 @@ toFuncReport source context func startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see the body of your anonymous function next:",
-                D.stack
+                  "I was expecting to see the body of your anonymous function next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "The",
-                        "syntax",
-                        "for",
-                        "anonymous",
-                        "functions",
-                        "is",
-                        D.dullyellow "(\\x -> x + 1)",
-                        "so",
-                        "I",
-                        "am",
-                        "missing",
-                        "all",
-                        "the",
-                        "stuff",
-                        "after",
-                        "the",
-                        "arrow!"
-                      ],
-                    D.toSimpleNote $
+                      [ "The"
+                      , "syntax"
+                      , "for"
+                      , "anonymous"
+                      , "functions"
+                      , "is"
+                      , D.dullyellow "(\\x -> x + 1)"
+                      , "so"
+                      , "I"
+                      , "am"
+                      , "missing"
+                      , "all"
+                      , "the"
+                      , "stuff"
+                      , "after"
+                      , "the"
+                      , "arrow!"
+                      ]
+                  , D.toSimpleNote $
                       "It is possible that I am confused about indetation! I generally recommend\
                       \ switching to named functions if the definition cannot fit inline nicely, so\
                       \ either (1) try to fit the whole anonymous function on one line or (2) break\
@@ -5324,8 +5324,8 @@ toPatternReport source context pattern startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "It looks like you are trying to use `" ++ keyword ++ "` " ++ inThisThing ++ ":",
-                    D.reflow $
+                      "It looks like you are trying to use `" ++ keyword ++ "` " ++ inThisThing ++ ":"
+                  , D.reflow $
                       "This is a reserved word! Try using some other name?"
                   )
         Code.Operator "-" ->
@@ -5337,8 +5337,8 @@ toPatternReport source context pattern startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I ran into a minus sign unexpectedly in this pattern:",
-                    D.reflow $
+                      "I ran into a minus sign unexpectedly in this pattern:"
+                  , D.reflow $
                       "It is not possible to pattern match on negative numbers at this\
                       \ time. Try using an `if` expression for that sort of thing for now."
                   )
@@ -5351,36 +5351,36 @@ toPatternReport source context pattern startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I wanted to parse a pattern next, but I got stuck here:",
-                    D.fillSep $
-                      [ "I",
-                        "am",
-                        "not",
-                        "sure",
-                        "why",
-                        "I",
-                        "am",
-                        "getting",
-                        "stuck",
-                        "exactly.",
-                        "I",
-                        "just",
-                        "know",
-                        "that",
-                        "I",
-                        "want",
-                        "a",
-                        "pattern",
-                        "next.",
-                        "Something",
-                        "as",
-                        "simple",
-                        "as",
-                        D.dullyellow "maybeHeight",
-                        "or",
-                        D.dullyellow "result",
-                        "would",
-                        "work!"
+                      "I wanted to parse a pattern next, but I got stuck here:"
+                  , D.fillSep $
+                      [ "I"
+                      , "am"
+                      , "not"
+                      , "sure"
+                      , "why"
+                      , "I"
+                      , "am"
+                      , "getting"
+                      , "stuck"
+                      , "exactly."
+                      , "I"
+                      , "just"
+                      , "know"
+                      , "that"
+                      , "I"
+                      , "want"
+                      , "a"
+                      , "pattern"
+                      , "next."
+                      , "Something"
+                      , "as"
+                      , "simple"
+                      , "as"
+                      , D.dullyellow "maybeHeight"
+                      , "or"
+                      , D.dullyellow "result"
+                      , "would"
+                      , "work!"
                       ]
                   )
     PChar char row col ->
@@ -5397,30 +5397,30 @@ toPatternReport source context pattern startRow startCol =
               region
               Nothing
               ( D.reflow $
-                  "I cannot pattern match with floating point numbers:",
-                D.fillSep $
-                  [ "Equality",
-                    "on",
-                    "floats",
-                    "can",
-                    "be",
-                    "unreliable,",
-                    "so",
-                    "you",
-                    "usually",
-                    "want",
-                    "to",
-                    "check",
-                    "that",
-                    "they",
-                    "are",
-                    "nearby",
-                    "with",
-                    "some",
-                    "sort",
-                    "of",
-                    D.dullyellow "(abs (actual - expected) < 0.001)",
-                    "check."
+                  "I cannot pattern match with floating point numbers:"
+              , D.fillSep $
+                  [ "Equality"
+                  , "on"
+                  , "floats"
+                  , "can"
+                  , "be"
+                  , "unreliable,"
+                  , "so"
+                  , "you"
+                  , "usually"
+                  , "want"
+                  , "to"
+                  , "check"
+                  , "that"
+                  , "they"
+                  , "are"
+                  , "nearby"
+                  , "with"
+                  , "some"
+                  , "sort"
+                  , "of"
+                  , D.dullyellow "(abs (actual - expected) < 0.001)"
+                  , "check."
                   ]
               )
     PAlias row col ->
@@ -5428,43 +5428,43 @@ toPatternReport source context pattern startRow startCol =
        in Report.Report "UNFINISHED PATTERN" region [] $
             Code.toSnippet source region Nothing $
               ( D.reflow $
-                  "I was expecting to see a variable name after the `as` keyword:",
-                D.stack
+                  "I was expecting to see a variable name after the `as` keyword:"
+              , D.stack
                   [ D.fillSep $
-                      [ "The",
-                        "`as`",
-                        "keyword",
-                        "lets",
-                        "you",
-                        "write",
-                        "patterns",
-                        "like",
-                        "([" <> D.dullyellow "x" <> "," <> D.dullyellow "y" <> "] " <> D.cyan "as" <> D.dullyellow " point" <> ")",
-                        "so",
-                        "you",
-                        "can",
-                        "refer",
-                        "to",
-                        "individual",
-                        "parts",
-                        "of",
-                        "the",
-                        "array",
-                        "with",
-                        D.dullyellow "x",
-                        "and",
-                        D.dullyellow "y",
-                        "or",
-                        "you",
-                        "refer",
-                        "to",
-                        "the",
-                        "whole",
-                        "thing",
-                        "with",
-                        D.dullyellow "point" <> "."
-                      ],
-                    D.reflow $
+                      [ "The"
+                      , "`as`"
+                      , "keyword"
+                      , "lets"
+                      , "you"
+                      , "write"
+                      , "patterns"
+                      , "like"
+                      , "([" <> D.dullyellow "x" <> "," <> D.dullyellow "y" <> "] " <> D.cyan "as" <> D.dullyellow " point" <> ")"
+                      , "so"
+                      , "you"
+                      , "can"
+                      , "refer"
+                      , "to"
+                      , "individual"
+                      , "parts"
+                      , "of"
+                      , "the"
+                      , "array"
+                      , "with"
+                      , D.dullyellow "x"
+                      , "and"
+                      , D.dullyellow "y"
+                      , "or"
+                      , "you"
+                      , "refer"
+                      , "to"
+                      , "the"
+                      , "whole"
+                      , "thing"
+                      , "with"
+                      , D.dullyellow "point" <> "."
+                      ]
+                  , D.reflow $
                       "So I was expecting to see a variable name after the `as` keyword here. Sometimes\
                       \ people just want to use `as` as a variable name though. Try using a different name\
                       \ in that case!"
@@ -5481,39 +5481,39 @@ toPatternReport source context pattern startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I wanted to parse a pattern next, but I got stuck here:",
-                D.stack
+                  "I wanted to parse a pattern next, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "am",
-                        "not",
-                        "sure",
-                        "why",
-                        "I",
-                        "am",
-                        "getting",
-                        "stuck",
-                        "exactly.",
-                        "I",
-                        "just",
-                        "know",
-                        "that",
-                        "I",
-                        "want",
-                        "a",
-                        "pattern",
-                        "next.",
-                        "Something",
-                        "as",
-                        "simple",
-                        "as",
-                        D.dullyellow "maybeHeight",
-                        "or",
-                        D.dullyellow "result",
-                        "would",
-                        "work!"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "am"
+                      , "not"
+                      , "sure"
+                      , "why"
+                      , "I"
+                      , "am"
+                      , "getting"
+                      , "stuck"
+                      , "exactly."
+                      , "I"
+                      , "just"
+                      , "know"
+                      , "that"
+                      , "I"
+                      , "want"
+                      , "a"
+                      , "pattern"
+                      , "next."
+                      , "Something"
+                      , "as"
+                      , "simple"
+                      , "as"
+                      , D.dullyellow "maybeHeight"
+                      , "or"
+                      , D.dullyellow "result"
+                      , "would"
+                      , "work!"
+                      ]
+                  , D.toSimpleNote $
                       "I can get confused by indentation. If you think there is a pattern next, maybe\
                       \ it needs to be indented a bit more?"
                   ]
@@ -5523,43 +5523,43 @@ toPatternReport source context pattern startRow startCol =
        in Report.Report "UNFINISHED PATTERN" region [] $
             Code.toSnippet source region Nothing $
               ( D.reflow $
-                  "I was expecting to see a variable name after the `as` keyword:",
-                D.stack
+                  "I was expecting to see a variable name after the `as` keyword:"
+              , D.stack
                   [ D.fillSep $
-                      [ "The",
-                        "`as`",
-                        "keyword",
-                        "lets",
-                        "you",
-                        "write",
-                        "patterns",
-                        "like",
-                        "([" <> D.dullyellow "x" <> "," <> D.dullyellow "y" <> "] " <> D.cyan "as" <> D.dullyellow " point" <> ")",
-                        "so",
-                        "you",
-                        "can",
-                        "refer",
-                        "to",
-                        "individual",
-                        "parts",
-                        "of",
-                        "the",
-                        "array",
-                        "with",
-                        D.dullyellow "x",
-                        "and",
-                        D.dullyellow "y",
-                        "or",
-                        "you",
-                        "refer",
-                        "to",
-                        "the",
-                        "whole",
-                        "thing",
-                        "with",
-                        D.dullyellow "point."
-                      ],
-                    D.reflow $
+                      [ "The"
+                      , "`as`"
+                      , "keyword"
+                      , "lets"
+                      , "you"
+                      , "write"
+                      , "patterns"
+                      , "like"
+                      , "([" <> D.dullyellow "x" <> "," <> D.dullyellow "y" <> "] " <> D.cyan "as" <> D.dullyellow " point" <> ")"
+                      , "so"
+                      , "you"
+                      , "can"
+                      , "refer"
+                      , "to"
+                      , "individual"
+                      , "parts"
+                      , "of"
+                      , "the"
+                      , "array"
+                      , "with"
+                      , D.dullyellow "x"
+                      , "and"
+                      , D.dullyellow "y"
+                      , "or"
+                      , "you"
+                      , "refer"
+                      , "to"
+                      , "the"
+                      , "whole"
+                      , "thing"
+                      , "with"
+                      , D.dullyellow "point."
+                      ]
+                  , D.reflow $
                       "So I was expecting to see a variable name after the `as` keyword here. Sometimes\
                       \ people just want to use `as` as a variable name though. Try using a different name\
                       \ in that case!"
@@ -5575,21 +5575,21 @@ toPRecordReport source context record startRow startCol =
     PRecordEnd row col ->
       toUnfinishRecordPatternReport source row col startRow startCol $
         D.fillSep
-          [ "I",
-            "was",
-            "expecting",
-            "to",
-            "see",
-            "a",
-            "closing",
-            "curly",
-            "brace",
-            "next.",
-            "Try",
-            "adding",
-            "a",
-            D.dullyellow "}",
-            "here?"
+          [ "I"
+          , "was"
+          , "expecting"
+          , "to"
+          , "see"
+          , "a"
+          , "closing"
+          , "curly"
+          , "brace"
+          , "next."
+          , "Try"
+          , "adding"
+          , "a"
+          , D.dullyellow "}"
+          , "here?"
           ]
     PRecordField row col ->
       case Code.whatIsNext source row col of
@@ -5602,8 +5602,8 @@ toPRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was not expecting to see `" ++ keyword ++ "` as a record field name:",
-                    D.reflow $
+                      "I was not expecting to see `" ++ keyword ++ "` as a record field name:"
+                  , D.reflow $
                       "This is a reserved word, not available for variable names. Try another name!"
                   )
         _ ->
@@ -5622,21 +5622,21 @@ toPRecordReport source context record startRow startCol =
     PRecordIndentEnd row col ->
       toUnfinishRecordPatternReport source row col startRow startCol $
         D.fillSep
-          [ "I",
-            "was",
-            "expecting",
-            "to",
-            "see",
-            "a",
-            "closing",
-            "curly",
-            "brace",
-            "next.",
-            "Try",
-            "adding",
-            "a",
-            D.dullyellow "}",
-            "here?"
+          [ "I"
+          , "was"
+          , "expecting"
+          , "to"
+          , "see"
+          , "a"
+          , "closing"
+          , "curly"
+          , "brace"
+          , "next."
+          , "Try"
+          , "adding"
+          , "a"
+          , D.dullyellow "}"
+          , "here?"
           ]
     PRecordIndentField row col ->
       toUnfinishRecordPatternReport source row col startRow startCol $
@@ -5652,28 +5652,28 @@ toUnfinishRecordPatternReport source row col startRow startCol message =
           surroundings
           (Just region)
           ( D.reflow $
-              "I was partway through parsing a record pattern, but I got stuck here:",
-            D.stack
-              [ message,
-                D.toFancyHint $
-                  [ "A",
-                    "record",
-                    "pattern",
-                    "looks",
-                    "like",
-                    D.dullyellow "{x,y}",
-                    "or",
-                    D.dullyellow "{name,age}",
-                    "where",
-                    "you",
-                    "list",
-                    "the",
-                    "field",
-                    "names",
-                    "you",
-                    "want",
-                    "to",
-                    "access."
+              "I was partway through parsing a record pattern, but I got stuck here:"
+          , D.stack
+              [ message
+              , D.toFancyHint $
+                  [ "A"
+                  , "record"
+                  , "pattern"
+                  , "looks"
+                  , "like"
+                  , D.dullyellow "{x,y}"
+                  , "or"
+                  , D.dullyellow "{name,age}"
+                  , "where"
+                  , "you"
+                  , "list"
+                  , "the"
+                  , "field"
+                  , "names"
+                  , "you"
+                  , "want"
+                  , "to"
+                  , "access."
                   ]
               ]
           )
@@ -5692,8 +5692,8 @@ toPArrayReport source context array startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "It looks like you are trying to use `" ++ keyword ++ "` to name an element of an array:",
-                    D.reflow $
+                      "It looks like you are trying to use `" ++ keyword ++ "` to name an element of an array:"
+                  , D.reflow $
                       "This is a reserved word though! Try using some other name?"
                   )
         _ ->
@@ -5702,8 +5702,8 @@ toPArrayReport source context array startRow startCol =
            in Report.Report "UNFINISHED ARRAY PATTERN" region [] $
                 Code.toSnippet source surroundings (Just region) $
                   ( D.reflow $
-                      "I just saw an open square bracket, but then I got stuck here:",
-                    D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
+                      "I just saw an open square bracket, but then I got stuck here:"
+                  , D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
                   )
     PArrayEnd row col ->
       let surroundings = A.Region (A.Position startRow startCol) (A.Position row col)
@@ -5711,8 +5711,8 @@ toPArrayReport source context array startRow startCol =
        in Report.Report "UNFINISHED ARRAY PATTERN" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I was expecting a closing square bracket to end this array pattern:",
-                D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
+                  "I was expecting a closing square bracket to end this array pattern:"
+              , D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
               )
     PArrayExpr pattern row col ->
       toPatternReport source context pattern row col
@@ -5724,10 +5724,10 @@ toPArrayReport source context array startRow startCol =
        in Report.Report "UNFINISHED ARRAY PATTERN" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I just saw an open square bracket, but then I got stuck here:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"],
-                    D.toSimpleNote $
+                  "I just saw an open square bracket, but then I got stuck here:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe there is something next, but it is not indented enough?"
                   ]
@@ -5738,10 +5738,10 @@ toPArrayReport source context array startRow startCol =
        in Report.Report "UNFINISHED ARRAY PATTERN" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I was expecting a closing square bracket to end this array pattern:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"],
-                    D.toSimpleNote $
+                  "I was expecting a closing square bracket to end this array pattern:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow "]", "to", "see", "if", "that", "helps?"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a closing square bracket but it is not indented enough?"
                   ]
@@ -5752,11 +5752,11 @@ toPArrayReport source context array startRow startCol =
        in Report.Report "UNFINISHED ARRAY PATTERN" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I am partway through parsing an array pattern, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing an array pattern, but I got stuck here:"
+              , D.stack
                   [ D.reflow $
-                      "I was expecting to see another pattern next. Maybe a variable name.",
-                    D.toSimpleNote $
+                      "I was expecting to see another pattern next. Maybe a variable name."
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe there is more to this pattern but it is not indented enough?"
                   ]
@@ -5773,8 +5773,8 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
            in Report.Report "RESERVED WORD" region [] $
                 Code.toSnippet source surroundings (Just region) $
                   ( D.reflow $
-                      "I ran into a reserved word in this pattern:",
-                    D.reflow $
+                      "I ran into a reserved word in this pattern:"
+                  , D.reflow $
                       "The `" ++ keyword ++ "` keyword is reserved. Try using a different name instead!"
                   )
         Code.Operator op ->
@@ -5783,8 +5783,8 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
            in Report.Report "UNEXPECTED SYMBOL" region [] $
                 Code.toSnippet source surroundings (Just region) $
                   ( D.reflow $
-                      "I ran into the " ++ op ++ " symbol unexpectedly in this pattern:",
-                    D.reflow $
+                      "I ran into the " ++ op ++ " symbol unexpectedly in this pattern:"
+                  , D.reflow $
                       "Symbols don't work in patterns."
                   )
         Code.Close term bracket ->
@@ -5793,8 +5793,8 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
            in Report.Report ("STRAY " ++ map Char.toUpper term) region [] $
                 Code.toSnippet source surroundings (Just region) $
                   ( D.reflow $
-                      "I ran into a an unexpected " ++ term ++ " in this pattern:",
-                    D.reflow $
+                      "I ran into a an unexpected " ++ term ++ " in this pattern:"
+                  , D.reflow $
                       "This " ++ bracket : " does not match up with an earlier open " ++ term ++ ". Try deleting it?"
                   )
         _ ->
@@ -5803,25 +5803,25 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
            in Report.Report "UNFINISHED PARENTHESES" region [] $
                 Code.toSnippet source surroundings (Just region) $
                   ( D.reflow $
-                      "I was partway through parsing a pattern, but I got stuck here:",
-                    D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "a",
-                        "closing",
-                        "parenthesis",
-                        "next,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow ")",
-                        "to",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
+                      "I was partway through parsing a pattern, but I got stuck here:"
+                  , D.fillSep
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "a"
+                      , "closing"
+                      , "parenthesis"
+                      , "next,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow ")"
+                      , "to"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
                       ]
                   )
     PParenthesizedPattern pattern row col ->
@@ -5834,10 +5834,10 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
        in Report.Report "UNFINISHED PARENTHESES" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I was expecting a closing parenthesis next:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"],
-                    D.toSimpleNote $
+                  "I was expecting a closing parenthesis next:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a closing parenthesis but it is not indented enough?"
                   ]
@@ -5848,16 +5848,16 @@ toPParenthesizedReport source context parenthesizedPattern startRow startCol =
        in Report.Report "UNFINISHED PARENTHESES" region [] $
             Code.toSnippet source surroundings (Just region) $
               ( D.reflow $
-                  "I just saw an open parenthesis, but then I got stuck here:",
-                D.fillSep
-                  [ "I",
-                    "was",
-                    "expecting",
-                    "to",
-                    "see",
-                    "a",
-                    "pattern",
-                    "next."
+                  "I just saw an open parenthesis, but then I got stuck here:"
+              , D.fillSep
+                  [ "I"
+                  , "was"
+                  , "expecting"
+                  , "to"
+                  , "see"
+                  , "a"
+                  , "pattern"
+                  , "next."
                   ]
               )
 
@@ -5887,8 +5887,8 @@ toTypeReport source context tipe startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was expecting to see a type next, but I got stuck on this reserved word:",
-                    D.reflow $
+                      "I was expecting to see a type next, but I got stuck on this reserved word:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a type variable, but \
@@ -5917,23 +5917,23 @@ toTypeReport source context tipe startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing " ++ something ++ ", but I got stuck here:",
-                    D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "type",
-                        "next.",
-                        "Try",
-                        "putting",
-                        D.dullyellow "Int",
-                        "or",
-                        D.dullyellow "String",
-                        "for",
-                        "now?"
+                      "I was partway through parsing " ++ something ++ ", but I got stuck here:"
+                  , D.fillSep $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "type"
+                      , "next."
+                      , "Try"
+                      , "putting"
+                      , D.dullyellow "Int"
+                      , "or"
+                      , D.dullyellow "String"
+                      , "for"
+                      , "now?"
                       ]
                   )
     TSpace space row col ->
@@ -5954,26 +5954,26 @@ toTypeReport source context tipe startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was partway through parsing a " ++ thing ++ ", but I got stuck here:",
-                D.stack
+                  "I was partway through parsing a " ++ thing ++ ", but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "type",
-                        "next.",
-                        "Try",
-                        "putting",
-                        D.dullyellow "Int",
-                        "or",
-                        D.dullyellow "String",
-                        "for",
-                        "now?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "type"
+                      , "next."
+                      , "Try"
+                      , "putting"
+                      , D.dullyellow "Int"
+                      , "or"
+                      , D.dullyellow "String"
+                      , "for"
+                      , "now?"
+                      ]
+                  , D.toSimpleNote $
                       "I can get confused by indentation. If you think there is already a type\
                       \ next, maybe it is not indented enough?"
                   ]
@@ -5993,8 +5993,8 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just started parsing a record type, but I got stuck on this field name:",
-                    D.reflow $
+                      "I just started parsing a record type, but I got stuck on this field name:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a field name, but \
@@ -6009,23 +6009,23 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I just started parsing a record type, but I got stuck here:",
-                    D.fillSep
-                      [ "Record",
-                        "types",
-                        "look",
-                        "like",
-                        D.dullyellow "{ name : String, age : Int },",
-                        "so",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "field",
-                        "name",
-                        "next."
+                      "I just started parsing a record type, but I got stuck here:"
+                  , D.fillSep
+                      [ "Record"
+                      , "types"
+                      , "look"
+                      , "like"
+                      , D.dullyellow "{ name : String, age : Int },"
+                      , "so"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "field"
+                      , "name"
+                      , "next."
                       ]
                   )
     TRecordEnd row col ->
@@ -6037,32 +6037,32 @@ toTRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a record type, but I got stuck here:"
+              , D.stack
                   [ D.fillSep
-                      [ "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "closing",
-                        "curly",
-                        "brace",
-                        "before",
-                        "this,",
-                        "so",
-                        "try",
-                        "adding",
-                        "a",
-                        D.dullyellow "}",
-                        "and",
-                        "see",
-                        "if",
-                        "that",
-                        "helps?"
-                      ],
-                    D.toSimpleNote $
+                      [ "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "closing"
+                      , "curly"
+                      , "brace"
+                      , "before"
+                      , "this,"
+                      , "so"
+                      , "try"
+                      , "adding"
+                      , "a"
+                      , D.dullyellow "}"
+                      , "and"
+                      , "see"
+                      , "if"
+                      , "that"
+                      , "helps?"
+                      ]
+                  , D.toSimpleNote $
                       "When I get stuck like this, it usually means that there is a missing parenthesis\
                       \ or bracket somewhere earlier. It could also be a stray keyword or operator."
                   ]
@@ -6078,8 +6078,8 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record type, but I got stuck on this field name:",
-                    D.reflow $
+                      "I am partway through parsing a record type, but I got stuck on this field name:"
+                  , D.reflow $
                       "It looks like you are trying to use `"
                         ++ keyword
                         ++ "` as a field name, but \
@@ -6094,13 +6094,13 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record type, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record type, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I am seeing two commas in a row. This is the second one!",
-                        D.reflow $
-                          "Just delete one of the commas and you should be all set!",
-                        noteForRecordTypeError
+                          "I am seeing two commas in a row. This is the second one!"
+                      , D.reflow $
+                          "Just delete one of the commas and you should be all set!"
+                      , noteForRecordTypeError
                       ]
                   )
         Code.Close _ '}' ->
@@ -6112,12 +6112,12 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record type, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record type, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
                           "Trailing commas are not allowed in record types. Try deleting the comma that\
-                          \ appears before this closing curly brace.",
-                        noteForRecordTypeError
+                          \ appears before this closing curly brace."
+                      , noteForRecordTypeError
                       ]
                   )
         _ ->
@@ -6129,32 +6129,32 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I am partway through parsing a record type, but I got stuck here:",
-                    D.stack
+                      "I am partway through parsing a record type, but I got stuck here:"
+                  , D.stack
                       [ D.fillSep
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "another",
-                            "record",
-                            "field",
-                            "defined",
-                            "next,",
-                            "so",
-                            "I",
-                            "am",
-                            "looking",
-                            "for",
-                            "a",
-                            "name",
-                            "like",
-                            D.dullyellow "userName",
-                            "or",
-                            D.dullyellow "plantHeight" <> "."
-                          ],
-                        noteForRecordTypeError
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "another"
+                          , "record"
+                          , "field"
+                          , "defined"
+                          , "next,"
+                          , "so"
+                          , "I"
+                          , "am"
+                          , "looking"
+                          , "for"
+                          , "a"
+                          , "name"
+                          , "like"
+                          , D.dullyellow "userName"
+                          , "or"
+                          , D.dullyellow "plantHeight" <> "."
+                          ]
+                      , noteForRecordTypeError
                       ]
                   )
     TRecordColon row col ->
@@ -6166,33 +6166,33 @@ toTRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record type, but I got stuck here:",
-                D.stack
+                  "I am partway through parsing a record type, but I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "just",
-                        "saw",
-                        "a",
-                        "field",
-                        "name,",
-                        "so",
-                        "I",
-                        "was",
-                        "expecting",
-                        "to",
-                        "see",
-                        "a",
-                        "colon",
-                        "next.",
-                        "So",
-                        "try",
-                        "putting",
-                        "an",
-                        D.green ":",
-                        "sign",
-                        "here?"
-                      ],
-                    noteForRecordTypeError
+                      [ "I"
+                      , "just"
+                      , "saw"
+                      , "a"
+                      , "field"
+                      , "name,"
+                      , "so"
+                      , "I"
+                      , "was"
+                      , "expecting"
+                      , "to"
+                      , "see"
+                      , "a"
+                      , "colon"
+                      , "next."
+                      , "So"
+                      , "try"
+                      , "putting"
+                      , "an"
+                      , D.green ":"
+                      , "sign"
+                      , "here?"
+                      ]
+                  , noteForRecordTypeError
                   ]
               )
     TRecordType tipe row col ->
@@ -6208,26 +6208,26 @@ toTRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw the opening curly brace of a record type, but then I got stuck here:",
-                D.stack
+                  "I just saw the opening curly brace of a record type, but then I got stuck here:"
+              , D.stack
                   [ D.fillSep $
-                      [ "I",
-                        "am",
-                        "expecting",
-                        "a",
-                        "record",
-                        "like",
-                        D.dullyellow "{ name : String, age : Int }",
-                        "here.",
-                        "Try",
-                        "defining",
-                        "some",
-                        "fields",
-                        "of",
-                        "your",
-                        "own?"
-                      ],
-                    noteForRecordTypeIndentError
+                      [ "I"
+                      , "am"
+                      , "expecting"
+                      , "a"
+                      , "record"
+                      , "like"
+                      , D.dullyellow "{ name : String, age : Int }"
+                      , "here."
+                      , "Try"
+                      , "defining"
+                      , "some"
+                      , "fields"
+                      , "of"
+                      , "your"
+                      , "own?"
+                      ]
+                  , noteForRecordTypeIndentError
                   ]
               )
     TRecordIndentEnd row col ->
@@ -6241,11 +6241,11 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing a record type, but I got stuck here:",
-                    D.stack
+                      "I was partway through parsing a record type, but I got stuck here:"
+                  , D.stack
                       [ D.reflow $
-                          "I need this curly brace to be indented more. Try adding some spaces before it!",
-                        noteForRecordTypeError
+                          "I need this curly brace to be indented more. Try adding some spaces before it!"
+                      , noteForRecordTypeError
                       ]
                   )
         Nothing ->
@@ -6257,31 +6257,31 @@ toTRecordReport source context record startRow startCol =
                   surroundings
                   (Just region)
                   ( D.reflow $
-                      "I was partway through parsing a record type, but I got stuck here:",
-                    D.stack
+                      "I was partway through parsing a record type, but I got stuck here:"
+                  , D.stack
                       [ D.fillSep $
-                          [ "I",
-                            "was",
-                            "expecting",
-                            "to",
-                            "see",
-                            "a",
-                            "closing",
-                            "curly",
-                            "brace",
-                            "next.",
-                            "Try",
-                            "putting",
-                            "a",
-                            D.green "}",
-                            "next",
-                            "and",
-                            "see",
-                            "if",
-                            "that",
-                            "helps?"
-                          ],
-                        noteForRecordTypeIndentError
+                          [ "I"
+                          , "was"
+                          , "expecting"
+                          , "to"
+                          , "see"
+                          , "a"
+                          , "closing"
+                          , "curly"
+                          , "brace"
+                          , "next."
+                          , "Try"
+                          , "putting"
+                          , "a"
+                          , D.green "}"
+                          , "next"
+                          , "and"
+                          , "see"
+                          , "if"
+                          , "that"
+                          , "helps?"
+                          ]
+                      , noteForRecordTypeIndentError
                       ]
                   )
     TRecordIndentField row col ->
@@ -6293,13 +6293,13 @@ toTRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record type, but I got stuck after that last comma:",
-                D.stack
+                  "I am partway through parsing a record type, but I got stuck after that last comma:"
+              , D.stack
                   [ D.reflow $
                       "Trailing commas are not allowed in record types, so the fix may be to\
                       \ delete that last comma? Or maybe you were in the middle of defining\
-                      \ an additional field?",
-                    noteForRecordTypeIndentError
+                      \ an additional field?"
+                  , noteForRecordTypeIndentError
                   ]
               )
     TRecordIndentColon row col ->
@@ -6312,19 +6312,19 @@ toTRecordReport source context record startRow startCol =
               (Just region)
               ( D.reflow $
                   "I am partway through parsing a record type. I just saw a record\
-                  \ field, so I was expecting to see a colon next:",
-                D.stack
+                  \ field, so I was expecting to see a colon next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Try",
-                        "putting",
-                        "an",
-                        D.green ":",
-                        "followed",
-                        "by",
-                        "a",
-                        "type?"
-                      ],
-                    noteForRecordTypeIndentError
+                      [ "Try"
+                      , "putting"
+                      , "an"
+                      , D.green ":"
+                      , "followed"
+                      , "by"
+                      , "a"
+                      , "type?"
+                      ]
+                  , noteForRecordTypeIndentError
                   ]
               )
     TRecordIndentType row col ->
@@ -6336,20 +6336,20 @@ toTRecordReport source context record startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I am partway through parsing a record type, and I was expecting to run into a type next:",
-                D.stack
+                  "I am partway through parsing a record type, and I was expecting to run into a type next:"
+              , D.stack
                   [ D.fillSep $
-                      [ "Try",
-                        "putting",
-                        "something",
-                        "like",
-                        D.dullyellow "Int",
-                        "or",
-                        D.dullyellow "String",
-                        "for",
-                        "now?"
-                      ],
-                    noteForRecordTypeIndentError
+                      [ "Try"
+                      , "putting"
+                      , "something"
+                      , "like"
+                      , D.dullyellow "Int"
+                      , "or"
+                      , D.dullyellow "String"
+                      , "for"
+                      , "now?"
+                      ]
+                  , noteForRecordTypeIndentError
                   ]
               )
 
@@ -6357,15 +6357,15 @@ noteForRecordTypeError :: D.Doc
 noteForRecordTypeError =
   D.stack $
     [ D.toSimpleNote
-        "If you are trying to define a record type across multiple lines, I recommend using this format:",
-      D.indent 4 $
+        "If you are trying to define a record type across multiple lines, I recommend using this format:"
+    , D.indent 4 $
         D.vcat $
-          [ "{ name : String",
-            ", age : Int",
-            ", height : Float",
-            "}"
-          ],
-      D.reflow $
+          [ "{ name : String"
+          , ", age : Int"
+          , ", height : Float"
+          , "}"
+          ]
+    , D.reflow $
         "Notice that each line starts with some indentation. Usually two or four spaces.\
         \ This is the stylistic convention in the Gren ecosystem."
     ]
@@ -6375,15 +6375,15 @@ noteForRecordTypeIndentError =
   D.stack $
     [ D.toSimpleNote
         "I may be confused by indentation. For example, if you are trying to define\
-        \ a record type across multiple lines, I recommend using this format:",
-      D.indent 4 $
+        \ a record type across multiple lines, I recommend using this format:"
+    , D.indent 4 $
         D.vcat $
-          [ "{ name : String",
-            ", age : Int",
-            ", height : Float",
-            "}"
-          ],
-      D.reflow $
+          [ "{ name : String"
+          , ", age : Int"
+          , ", height : Float"
+          , "}"
+          ]
+    , D.reflow $
         "Notice that each line starts with some indentation. Usually two or four spaces.\
         \ This is the stylistic convention in the Gren ecosystem."
     ]
@@ -6400,10 +6400,10 @@ toTParenthesisReport source context parenthesizedType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see a closing parenthesis next, but I got stuck here:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"],
-                    D.toSimpleNote $
+                  "I was expecting to see a closing parenthesis next, but I got stuck here:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps?"]
+                  , D.toSimpleNote $
                       "I can get stuck when I run into keywords, operators, parentheses, or brackets\
                       \ unexpectedly. So there may be some earlier syntax trouble (like extra parenthesis\
                       \ or missing brackets) that is confusing me."
@@ -6422,25 +6422,25 @@ toTParenthesisReport source context parenthesizedType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I just saw an open parenthesis, so I was expecting to see a type next.",
-                D.stack
+                  "I just saw an open parenthesis, so I was expecting to see a type next."
+              , D.stack
                   [ D.fillSep $
-                      [ "Something",
-                        "like",
-                        D.dullyellow "(Maybe Int)",
-                        "or",
-                        D.dullyellow "(Array Person)" <> ".",
-                        "Anything",
-                        "where",
-                        "you",
-                        "are",
-                        "putting",
-                        "parentheses",
-                        "around",
-                        "normal",
-                        "types."
-                      ],
-                    D.toSimpleNote $
+                      [ "Something"
+                      , "like"
+                      , D.dullyellow "(Maybe Int)"
+                      , "or"
+                      , D.dullyellow "(Array Person)" <> "."
+                      , "Anything"
+                      , "where"
+                      , "you"
+                      , "are"
+                      , "putting"
+                      , "parentheses"
+                      , "around"
+                      , "normal"
+                      , "types."
+                      ]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a type but it is not indented enough?"
                   ]
@@ -6454,10 +6454,10 @@ toTParenthesisReport source context parenthesizedType startRow startCol =
               surroundings
               (Just region)
               ( D.reflow $
-                  "I was expecting to see a closing parenthesis next:",
-                D.stack
-                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"],
-                    D.toSimpleNote $
+                  "I was expecting to see a closing parenthesis next:"
+              , D.stack
+                  [ D.fillSep ["Try", "adding", "a", D.dullyellow ")", "to", "see", "if", "that", "helps!"]
+                  , D.toSimpleNote $
                       "I can get confused by indentation in cases like this, so\
                       \ maybe you have a closing parenthesis but it is not indented enough?"
                   ]

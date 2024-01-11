@@ -1,24 +1,24 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Reporting.Annotation
-  ( Located (..),
-    Position (..),
-    Region (..),
-    traverse,
-    toValue,
-    merge,
-    at,
-    isIndentedMoreThan,
-    toRegion,
-    mergeRegions,
-    zero,
-    one,
-  )
+module Reporting.Annotation (
+  Located (..),
+  Position (..),
+  Region (..),
+  traverse,
+  toValue,
+  merge,
+  at,
+  isIndentedMoreThan,
+  toRegion,
+  mergeRegions,
+  zero,
+  one,
+)
 where
 
 import Control.Monad (liftM2)
 import Data.Binary (Binary, get, put)
-import Data.Word (Word16)
+import Data.Word (Word16, Word32)
 import Prelude hiding (traverse)
 
 -- LOCATED
@@ -43,7 +43,7 @@ merge :: Located a -> Located b -> value -> Located value
 merge (At r1 _) (At r2 _) value =
   At (mergeRegions r1 r2) value
 
-isIndentedMoreThan :: Word16 -> Located a -> Bool
+isIndentedMoreThan :: Word32 -> Located a -> Bool
 isIndentedMoreThan indent (At (Region (Position _ col) _) _) =
   col > indent
 
@@ -51,8 +51,8 @@ isIndentedMoreThan indent (At (Region (Position _ col) _) _) =
 
 data Position
   = Position
-      {-# UNPACK #-} !Word16
-      {-# UNPACK #-} !Word16
+      {-# UNPACK #-} !Word32
+      {-# UNPACK #-} !Word32
   deriving (Eq, Show)
 
 at :: Position -> Position -> a -> Located a

@@ -1,16 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Reporting.Render.Code
-  ( Source,
-    toSource,
-    toSnippet,
-    toPair,
-    Next (..),
-    whatIsNext,
-    nextLineStartsWithKeyword,
-    nextLineStartsWithCloseCurly,
-  )
+module Reporting.Render.Code (
+  Source,
+  toSource,
+  toSnippet,
+  toPair,
+  Next (..),
+  whatIsNext,
+  nextLineStartsWithKeyword,
+  nextLineStartsWithCloseCurly,
+)
 where
 
 import Data.ByteString qualified as B
@@ -21,7 +21,7 @@ import Data.List qualified as List
 import Data.Maybe qualified as Maybe
 import Data.Name qualified as Name
 import Data.Set qualified as Set
-import Data.Word (Word16)
+import Data.Word (Word32)
 import Parse.Primitives (Col, Row)
 import Parse.Symbol (binopCharSet)
 import Parse.Variable (reservedWords)
@@ -32,7 +32,7 @@ import Reporting.Doc qualified as D
 -- CODE
 
 newtype Source
-  = Source [(Word16, String)]
+  = Source [(Word32, String)]
 
 toSource :: B.ByteString -> Source
 toSource source =
@@ -45,10 +45,10 @@ toSource source =
 toSnippet :: Source -> A.Region -> Maybe A.Region -> (D.Doc, D.Doc) -> D.Doc
 toSnippet source region highlight (preHint, postHint) =
   D.vcat
-    [ preHint,
-      "",
-      render source region highlight,
-      postHint
+    [ preHint
+    , ""
+    , render source region highlight
+    , postHint
     ]
 
 toPair :: Source -> A.Region -> A.Region -> (D.Doc, D.Doc) -> (D.Doc, D.Doc, D.Doc) -> D.Doc
@@ -56,20 +56,20 @@ toPair source r1 r2 (oneStart, oneEnd) (twoStart, twoMiddle, twoEnd) =
   case renderPair source r1 r2 of
     OneLine codeDocs ->
       D.vcat
-        [ oneStart,
-          "",
-          codeDocs,
-          oneEnd
+        [ oneStart
+        , ""
+        , codeDocs
+        , oneEnd
         ]
     TwoChunks code1 code2 ->
       D.vcat
-        [ twoStart,
-          "",
-          code1,
-          twoMiddle,
-          "",
-          code2,
-          twoEnd
+        [ twoStart
+        , ""
+        , code1
+        , twoMiddle
+        , ""
+        , code2
+        , twoEnd
         ]
 
 -- RENDER SNIPPET
@@ -96,7 +96,7 @@ render (Source sourceLines) region@(A.Region (A.Position startLine _) (A.Positio
         Just underline ->
           drawLines False width smallerRegion relevantLines underline
 
-makeUnderline :: Int -> Word16 -> A.Region -> Maybe Doc
+makeUnderline :: Int -> Word32 -> A.Region -> Maybe Doc
 makeUnderline width realEndLine (A.Region (A.Position start c1) (A.Position end c2)) =
   if start /= end || end < realEndLine
     then Nothing
@@ -105,17 +105,17 @@ makeUnderline width realEndLine (A.Region (A.Position start c1) (A.Position end 
           zigzag = replicate (max 1 (fromIntegral (c2 - c1))) '^'
        in Just (D.fromChars spaces <> D.red (D.fromChars zigzag))
 
-drawLines :: Bool -> Int -> A.Region -> [(Word16, String)] -> Doc -> Doc
+drawLines :: Bool -> Int -> A.Region -> [(Word32, String)] -> Doc -> Doc
 drawLines addZigZag width (A.Region (A.Position startLine _) (A.Position endLine _)) sourceLines finalLine =
   D.vcat $
     map (drawLine addZigZag width startLine endLine) sourceLines
       ++ [finalLine]
 
-drawLine :: Bool -> Int -> Word16 -> Word16 -> (Word16, String) -> Doc
+drawLine :: Bool -> Int -> Word32 -> Word32 -> (Word32, String) -> Doc
 drawLine addZigZag width startLine endLine (n, line) =
   addLineNumber addZigZag width startLine endLine n (D.fromChars line)
 
-addLineNumber :: Bool -> Int -> Word16 -> Word16 -> Word16 -> Doc -> Doc
+addLineNumber :: Bool -> Int -> Word32 -> Word32 -> Word32 -> Doc -> Doc
 addLineNumber addZigZag width start end n line =
   let number =
         show n
@@ -150,8 +150,8 @@ renderPair source@(Source sourceLines) region1 region2 =
               line = Maybe.fromJust $ List.lookup startRow1 sourceLines
            in OneLine $
                 D.vcat
-                  [ D.fromChars lineNumber <> "| " <> D.fromChars line,
-                    D.fromChars spaces1
+                  [ D.fromChars lineNumber <> "| " <> D.fromChars line
+                  , D.fromChars spaces1
                       <> D.red (D.fromChars zigzag1)
                       <> D.fromChars spaces2
                       <> D.red (D.fromChars zigzag2)

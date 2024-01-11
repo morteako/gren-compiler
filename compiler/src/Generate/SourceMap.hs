@@ -11,7 +11,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe qualified as Maybe
 import Data.Ord qualified
-import GHC.Word (Word16)
+import GHC.Word (Word32)
 import Generate.JavaScript.Builder qualified as JS
 import Generate.JavaScript.Name qualified as JsName
 import Generate.VLQ qualified as VLQ
@@ -34,7 +34,7 @@ generateOnto leadingLines moduleSources (SourceMap mappings) sourceBytes =
 generate :: Int -> Map.Map ModuleName.Canonical String -> [JS.Mapping] -> B.Builder
 generate leadingLines moduleSources mappings =
   mappings
-    & map (\mapping -> mapping {JS._m_gen_line = JS._m_gen_line mapping + fromIntegral leadingLines})
+    & map (\mapping -> mapping{JS._m_gen_line = JS._m_gen_line mapping + fromIntegral leadingLines})
     & parseMappings
     & mappingsToJson moduleSources
     & Json.encode
@@ -44,18 +44,18 @@ generate leadingLines moduleSources mappings =
     & B.byteString
 
 data Mappings = Mappings
-  { _m_sources :: OrderedListBuilder ModuleName.Canonical,
-    _m_names :: OrderedListBuilder JsName.Name,
-    _m_segment_accounting :: SegmentAccounting,
-    _m_vlqs :: B.Builder
+  { _m_sources :: OrderedListBuilder ModuleName.Canonical
+  , _m_names :: OrderedListBuilder JsName.Name
+  , _m_segment_accounting :: SegmentAccounting
+  , _m_vlqs :: B.Builder
   }
 
 data SegmentAccounting = SegmentAccounting
-  { _sa_prev_col :: Maybe Word16,
-    _sa_prev_source_idx :: Maybe Int,
-    _sa_prev_source_line :: Maybe Int,
-    _sa_prev_source_col :: Maybe Int,
-    _sa_prev_name_idx :: Maybe Int
+  { _sa_prev_col :: Maybe Word32
+  , _sa_prev_source_idx :: Maybe Int
+  , _sa_prev_source_line :: Maybe Int
+  , _sa_prev_source_col :: Maybe Int
+  , _sa_prev_name_idx :: Maybe Int
   }
 
 parseMappings :: [JS.Mapping] -> Mappings
@@ -63,17 +63,17 @@ parseMappings mappings =
   let mappingMap = foldr (\mapping acc -> Map.alter (mappingMapUpdater mapping) (JS._m_gen_line mapping) acc) Map.empty mappings
    in parseMappingsHelp 1 (fst $ Map.findMax mappingMap) mappingMap $
         Mappings
-          { _m_sources = emptyOrderedListBuilder,
-            _m_names = emptyOrderedListBuilder,
-            _m_segment_accounting =
+          { _m_sources = emptyOrderedListBuilder
+          , _m_names = emptyOrderedListBuilder
+          , _m_segment_accounting =
               SegmentAccounting
-                { _sa_prev_col = Nothing,
-                  _sa_prev_source_idx = Nothing,
-                  _sa_prev_source_line = Nothing,
-                  _sa_prev_source_col = Nothing,
-                  _sa_prev_name_idx = Nothing
-                },
-            _m_vlqs = ""
+                { _sa_prev_col = Nothing
+                , _sa_prev_source_idx = Nothing
+                , _sa_prev_source_line = Nothing
+                , _sa_prev_source_col = Nothing
+                , _sa_prev_name_idx = Nothing
+                }
+          , _m_vlqs = ""
           }
 
 mappingMapUpdater :: JS.Mapping -> Maybe [JS.Mapping] -> Maybe [JS.Mapping]
@@ -84,7 +84,7 @@ mappingMapUpdater toInsert maybeVal =
     Just existing ->
       Just $ toInsert : existing
 
-parseMappingsHelp :: Word16 -> Word16 -> Map Word16 [JS.Mapping] -> Mappings -> Mappings
+parseMappingsHelp :: Word32 -> Word32 -> Map Word32 [JS.Mapping] -> Mappings -> Mappings
 parseMappingsHelp currentLine lastLine mappingMap acc =
   if currentLine >= lastLine
     then acc
@@ -103,7 +103,7 @@ prepareForNewLine (Mappings srcs nms sa vlqs) =
   Mappings
     srcs
     nms
-    (sa {_sa_prev_col = Nothing})
+    (sa{_sa_prev_col = Nothing})
     (vlqs <> ";")
 
 encodeSegment :: JS.Mapping -> Mappings -> Mappings
@@ -119,11 +119,11 @@ encodeSegment segment (Mappings srcs nms sa vlqs) =
       sourceColDelta = sourceCol - fromIntegral (Maybe.fromMaybe 0 (_sa_prev_source_col sa))
       updatedSa =
         SegmentAccounting
-          { _sa_prev_col = Just genCol,
-            _sa_prev_source_idx = Just moduleIdx,
-            _sa_prev_source_line = Just sourceLine,
-            _sa_prev_source_col = Just sourceCol,
-            _sa_prev_name_idx = _sa_prev_name_idx sa
+          { _sa_prev_col = Just genCol
+          , _sa_prev_source_idx = Just moduleIdx
+          , _sa_prev_source_line = Just sourceLine
+          , _sa_prev_source_col = Just sourceCol
+          , _sa_prev_name_idx = _sa_prev_name_idx sa
           }
       vlqPrefix =
         if Maybe.isNothing (_sa_prev_col sa)
@@ -134,7 +134,7 @@ encodeSegment segment (Mappings srcs nms sa vlqs) =
           let newNames = insertIntoOrderedListBuilder segmentName nms
               nameIdx = Maybe.fromMaybe 0 $ lookupIndexOrderedListBuilder segmentName newNames
               nameIdxDelta = nameIdx - Maybe.fromMaybe 0 (_sa_prev_name_idx sa)
-           in Mappings newSources newNames (updatedSa {_sa_prev_name_idx = Just nameIdx}) $
+           in Mappings newSources newNames (updatedSa{_sa_prev_name_idx = Just nameIdx}) $
                 vlqs
                   <> vlqPrefix
                   <> B.string8 (VLQ.encode genColDelta)
@@ -154,15 +154,15 @@ encodeSegment segment (Mappings srcs nms sa vlqs) =
 -- Array builder
 
 data OrderedListBuilder a = OrderedListBuilder
-  { _ab_nextIndex :: Int,
-    _ab_values :: Map.Map a Int
+  { _ab_nextIndex :: Int
+  , _ab_values :: Map.Map a Int
   }
 
 emptyOrderedListBuilder :: OrderedListBuilder a
 emptyOrderedListBuilder =
   OrderedListBuilder
-    { _ab_nextIndex = 0,
-      _ab_values = Map.empty
+    { _ab_nextIndex = 0
+    , _ab_values = Map.empty
     }
 
 insertIntoOrderedListBuilder :: (Ord a) => a -> OrderedListBuilder a -> OrderedListBuilder a
@@ -172,8 +172,8 @@ insertIntoOrderedListBuilder value builder@(OrderedListBuilder nextIndex values)
       builder
     Nothing ->
       OrderedListBuilder
-        { _ab_nextIndex = nextIndex + 1,
-          _ab_values = Map.insert value nextIndex values
+        { _ab_nextIndex = nextIndex + 1
+        , _ab_values = Map.insert value nextIndex values
         }
 
 lookupIndexOrderedListBuilder :: (Ord a) => a -> OrderedListBuilder a -> Maybe Int
@@ -192,9 +192,9 @@ mappingsToJson :: Map.Map ModuleName.Canonical String -> Mappings -> Json.Value
 mappingsToJson moduleSources (Mappings sources names _sa vlqs) =
   let moduleNames = orderedListBuilderToList sources
    in Json.object
-        [ (JStr.fromChars "version", Json.int 3),
-          (JStr.fromChars "sources", Json.array $ map (ModuleName.encode . ModuleName._module) moduleNames),
-          (JStr.fromChars "sourcesContent", Json.array $ map (\moduleName -> Maybe.maybe Json.null Json.chars $ Map.lookup moduleName moduleSources) moduleNames),
-          (JStr.fromChars "names", Json.array $ map (\jsName -> Json.String ("\"" <> JsName.toBuilder jsName <> "\"")) $ orderedListBuilderToList names),
-          (JStr.fromChars "mappings", Json.String ("\"" <> vlqs <> "\""))
+        [ (JStr.fromChars "version", Json.int 3)
+        , (JStr.fromChars "sources", Json.array $ map (ModuleName.encode . ModuleName._module) moduleNames)
+        , (JStr.fromChars "sourcesContent", Json.array $ map (\moduleName -> Maybe.maybe Json.null Json.chars $ Map.lookup moduleName moduleSources) moduleNames)
+        , (JStr.fromChars "names", Json.array $ map (\jsName -> Json.String ("\"" <> JsName.toBuilder jsName <> "\"")) $ orderedListBuilderToList names)
+        , (JStr.fromChars "mappings", Json.String ("\"" <> vlqs <> "\""))
         ]

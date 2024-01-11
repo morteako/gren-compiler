@@ -3,40 +3,41 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
-module Parse.Primitives
-  ( fromByteString,
-    Parser (..),
-    State (..),
-    Row,
-    Col,
-    oneOf,
-    oneOfWithFallback,
-    inContext,
-    specialize,
-    getPosition,
-    getCol,
-    addLocation,
-    addEnd,
-    getIndent,
-    setIndent,
-    withIndent,
-    withBacksetIndent,
-    word1,
-    word2,
-    unsafeIndex,
-    isWord,
-    getCharWidth,
-    Snippet (..),
-    fromSnippet,
-    snippetToBuilder,
-  )
+module Parse.Primitives (
+  fromByteString,
+  Parser (..),
+  State (..),
+  Row,
+  Col,
+  oneOf,
+  oneOfWithFallback,
+  inContext,
+  specialize,
+  getPosition,
+  getCol,
+  addLocation,
+  addEnd,
+  getIndent,
+  setIndent,
+  withIndent,
+  withBacksetIndent,
+  word1,
+  word2,
+  unsafeIndex,
+  isWord,
+  getCharWidth,
+  Snippet (..),
+  fromSnippet,
+  snippetToBuilder,
+)
 where
 
 import Control.Applicative qualified as Applicative (Applicative (..))
+
 import Data.ByteString.Builder (Builder)
 import Data.ByteString.Builder qualified as Builder
 import Data.ByteString.Internal qualified as B
-import Data.Word (Word16, Word8)
+import Data.Word (Word32, Word8)
 import Foreign.ForeignPtr (ForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Ptr (Ptr, plusPtr)
@@ -59,17 +60,17 @@ newtype Parser x a
 
 data State -- PERF try taking some out to avoid allocation
   = State
-  { _src :: ForeignPtr Word8,
-    _pos :: !(Ptr Word8),
-    _end :: !(Ptr Word8),
-    _indent :: !Word16,
-    _row :: !Row,
-    _col :: !Col
+  { _src :: ForeignPtr Word8
+  , _pos :: !(Ptr Word8)
+  , _end :: !(Ptr Word8)
+  , _indent :: !Word32
+  , _row :: !Row
+  , _col :: !Col
   }
 
-type Row = Word16
+type Row = Word32
 
-type Col = Word16
+type Col = Word32
 
 -- FUNCTOR
 
@@ -189,11 +190,11 @@ toErr row col toError =
 -- FROM SNIPPET
 
 data Snippet = Snippet
-  { _fptr :: ForeignPtr Word8,
-    _offset :: Int,
-    _length :: Int,
-    _offRow :: Row,
-    _offCol :: Col
+  { _fptr :: ForeignPtr Word8
+  , _offset :: Int
+  , _length :: Int
+  , _offRow :: Row
+  , _offCol :: Col
   }
   deriving (Show)
 
@@ -214,7 +215,7 @@ snippetToBuilder (Snippet fptr offset length _ _) =
 
 -- POSITION
 
-getCol :: Parser x Word16
+getCol :: Parser x Word32
 getCol =
   Parser $ \state@(State _ _ _ _ _ col) _ eok _ _ ->
     eok col state
@@ -238,12 +239,12 @@ addEnd start value =
 
 -- INDENT
 
-getIndent :: Parser x Word16
+getIndent :: Parser x Word32
 getIndent =
   Parser $ \state@(State _ _ _ indent _ _) _ eok _ _ ->
     eok indent state
 
-setIndent :: Word16 -> Parser x ()
+setIndent :: Word32 -> Parser x ()
 setIndent indent =
   Parser $ \(State src pos end _ row col) _ eok _ _ ->
     let !newState = State src pos end indent row col
@@ -256,7 +257,7 @@ withIndent (Parser parser) =
         eok' a (State s p e _ r c) = eok a (State s p e oldIndent r c)
      in parser (State src pos end col row col) cok' eok' cerr eerr
 
-withBacksetIndent :: Word16 -> Parser x a -> Parser x a
+withBacksetIndent :: Word32 -> Parser x a -> Parser x a
 withBacksetIndent backset (Parser parser) =
   Parser $ \(State src pos end oldIndent row col) cok eok cerr eerr ->
     let cok' a (State s p e _ r c) = cok a (State s p e oldIndent r c)

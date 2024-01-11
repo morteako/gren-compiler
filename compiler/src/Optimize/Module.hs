@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-module Optimize.Module
-  ( optimize,
-  )
+module Optimize.Module (
+  optimize,
+)
 where
 
 import AST.Canonical qualified as Can
@@ -218,8 +218,8 @@ addDefNode home region name args body mainDeps graph =
 -- ADD RECURSIVE DEFS
 
 data State = State
-  { _values :: [(Name.Name, Opt.Expr)],
-    _functions :: [Opt.Def]
+  { _values :: [(Name.Name, Opt.Expr)]
+  , _functions :: [Opt.Def]
   }
 
 addRecDefs :: ModuleName.Canonical -> [Can.Def] -> Opt.LocalGraph -> Opt.LocalGraph

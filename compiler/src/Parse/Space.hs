@@ -2,24 +2,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-module Parse.Space
-  ( Parser,
-    --
-    chomp,
-    chompIndentedMoreThan,
-    chompAndCheckIndent,
-    --
-    checkIndent,
-    checkAligned,
-    checkFreshLine,
-    --
-    docComment,
-  )
+module Parse.Space (
+  Parser,
+  --
+  chomp,
+  chompIndentedMoreThan,
+  chompAndCheckIndent,
+  --
+  checkIndent,
+  checkAligned,
+  checkFreshLine,
+  --
+  docComment,
+)
 where
 
 import AST.Source qualified as Src
 import Data.Utf8 qualified as Utf8
-import Data.Word (Word16, Word8)
+import Data.Word (Word32, Word8)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Ptr (Ptr, minusPtr, plusPtr)
 import Parse.Primitives (Col, Row)
@@ -58,7 +58,7 @@ checkIndent (A.Position endRow endCol) toError =
       then eok () state
       else eerr endRow endCol toError
 
-checkAligned :: (Word16 -> Row -> Col -> x) -> P.Parser x ()
+checkAligned :: (Word32 -> Row -> Col -> x) -> P.Parser x ()
 checkAligned toError =
   P.Parser $ \state@(P.State _ _ _ indent row col) _ eok _ eerr ->
     if col == indent
@@ -177,7 +177,7 @@ data MultiStatus
   | MultiTab
   | MultiEndless
 
-eatMultiCommentHelp :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> Row -> Col -> Word16 -> (# MultiStatus, Ptr Word8, Row, Col #)
+eatMultiCommentHelp :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> Row -> Col -> Word32 -> (# MultiStatus, Ptr Word8, Row, Col #)
 eatMultiCommentHelp start pos end row col openComments =
   if pos >= end
     then (# MultiEndless, pos, row, col #)
