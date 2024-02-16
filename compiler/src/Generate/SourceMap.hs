@@ -104,7 +104,7 @@ prepareForNewLine (Mappings srcs nms sa vlqs) =
     srcs
     nms
     (sa {_sa_prev_col = Nothing})
-    (vlqs <> ";")
+    (vlqs <> "------------------;")
 
 encodeSegment :: JS.Mapping -> Mappings -> Mappings
 encodeSegment segment (Mappings srcs nms sa vlqs) =
